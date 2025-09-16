@@ -164,7 +164,7 @@ async def bot_callback(req: Request):
 
     query = re.sub(MENTION_RE, " ", (msg.text or "")).strip()
     if not query:
-        await post_message("Hi! Ask me something like “@eme when is Space Apps?”")
+        await post_message("Hi! Ask me something like “@eme should I take CS214 and CS211 at the same time?”")
         return Response(status_code=200)
 
     log.info(f"@{BOT_NAME} asked: {query}")

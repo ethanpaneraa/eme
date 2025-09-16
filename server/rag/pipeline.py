@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
+from datetime import datetime, timezone
 
 from ingestion.models import MessageChunk
 from utils.cleaning import sanitize_metadata
@@ -104,22 +105,39 @@ class RAGPipelineGM:
         return [{"role":"system","content":sys}, {"role":"user","content":user}]
 
     def _format_citations(self, hits: List[RetrievedHit]) -> str:
-      """Create a 'citations:' section from the retrieved excerpts."""
+        """
+        Return a 'citations:' block where each line is:
+          [n] Sender Name — MM/DD/YY
+        Falls back gracefully if a date is missing or non-ISO.
+        """
+        lines = ["", "citations:", ""]
 
-      lines = ["", "citations:", ""]
-      def _one_line(s: str, limit: int = 140) -> str:
-          s = " ".join((s or "").split())
-          return (s[:limit] + "…") if len(s) > limit else s
+        def _fmt_mmddyy(meta: Dict[str, Any]) -> str:
+            iso = meta.get("created_at_iso")
+            if iso:
+                try:
+                    dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+                    return dt.strftime("%m/%d/%y")
+                except Exception:
+                    pass
+            created_at = meta.get("created_at")
+            if isinstance(created_at, (int, float)):
+                try:
+                    dt = datetime.fromtimestamp(int(created_at), tz=timezone.utc)
+                    return dt.strftime("%m/%d/%y")
+                except Exception:
+                    pass
+            return ""
 
-      for i, h in enumerate(hits, 1):
-          sender = h.meta.get("sender_name", "Unknown")
-          date = (h.meta.get("created_at_iso") or "")[:10]
-          mtype = h.meta.get("msg_type", "message")
-          snippet = _one_line(h.text)
-          lines.append(f"[{i}] {sender} — {date} ({mtype}): {snippet}")
-      return "\n".join(lines)
+        for i, h in enumerate(hits, 1):
+            sender = h.meta.get("sender_name", "Unknown")
+            date_s = _fmt_mmddyy(h.meta)
+            if date_s:
+                lines.append(f"[{i}] {sender} — {date_s}")
+            else:
+                lines.append(f"[{i}] {sender}")
 
-
+        return "\n".join(lines)
 
 
     def generate(self, query: str, k: int = 6) -> str:
