@@ -25,10 +25,11 @@ CHAT_MODEL  = os.getenv("CHAT_MODEL") or "gpt-4o-mini"
 class RetrievedHit:
     text: str
     meta: Dict[str, Any]
-    score: float  # similarity (larger is better when we invert distances)
+    score: float
 
 class RAGPipelineGM:
     def __init__(self, batch_size: int = 64):
+        # TODO: switch to remote chrome client in the future
         # self.client = chromadb.HttpClient(
         #     host=CHROMADB_SERVER,
         #     settings=Settings(
@@ -78,16 +79,17 @@ class RAGPipelineGM:
         metas = res.get("metadatas", [[]])[0]
         dists = res.get("distances", [[]])[0]
         for doc, meta, dist in zip(docs, metas, dists):
-            # chroma returns distance; for cosine, similarity ~ 1 - distance
             sim = 1.0 - float(dist)
             hits.append(RetrievedHit(text=doc, meta=meta, score=sim))
         return hits
 
     def _build_prompt(self, query: str, hits: List[RetrievedHit]) -> List[Dict[str, str]]:
         sys = (
-            "You answer newcomer questions using ONLY the provided GroupMe excerpts. "
-            "Be concise and actionable. If the context doesn’t answer, say so. "
-            "Add short citations like (sender • YYYY-MM-DD). Prefer announcements for logistics."
+            "You answer newcomer questions using ONLY the provided GroupMe excerpts.\n"
+            "Write a helpful, clear answer of roughly 120–200 words. Be specific and actionable.\n"
+            "If the context doesn’t contain the answer, say so briefly and suggest what to ask next.\n"
+            "Do NOT include inline citations in the body. You will not reference numbers in the body.\n"
+            "Prefer announcements for logistics and time-sensitive info."
         )
         ctx = "\n\n--- EXCERPTS ---\n"
         for i, h in enumerate(hits, 1):
@@ -95,18 +97,44 @@ class RAGPipelineGM:
             date = (h.meta.get("created_at_iso") or "")[:10]
             mtype = h.meta.get("msg_type","")
             ctx += f"[{i}] ({mtype}) ({sender} • {date})\n{h.text}\n\n"
-        user = f"{ctx}--- QUESTION ---\n{query}\n\nAnswer with brief citations."
+        user = (
+            f"{ctx}--- QUESTION ---\n{query}\n\n"
+            "Write only the answer body (no headings, no inline citations)."
+        )
         return [{"role":"system","content":sys}, {"role":"user","content":user}]
+
+    def _format_citations(self, hits: List[RetrievedHit]) -> str:
+      """Create a 'citations:' section from the retrieved excerpts."""
+
+      lines = ["", "citations:", ""]
+      def _one_line(s: str, limit: int = 140) -> str:
+          s = " ".join((s or "").split())
+          return (s[:limit] + "…") if len(s) > limit else s
+
+      for i, h in enumerate(hits, 1):
+          sender = h.meta.get("sender_name", "Unknown")
+          date = (h.meta.get("created_at_iso") or "")[:10]
+          mtype = h.meta.get("msg_type", "message")
+          snippet = _one_line(h.text)
+          lines.append(f"[{i}] {sender} — {date} ({mtype}): {snippet}")
+      return "\n".join(lines)
+
+
 
 
     def generate(self, query: str, k: int = 6) -> str:
         hits = self.retrieve(query, k=k)
         if not hits:
             return "I couldn’t find anything relevant in the chat."
+
         msgs = self._build_prompt(query, hits)
         resp = self.llm.chat.completions.create(
             model=CHAT_MODEL,
             messages=msgs,
-            temperature=0.2,
+            temperature=0.3,
+            max_tokens=350,
         )
-        return resp.choices[0].message.content
+        body = resp.choices[0].message.content.strip()
+
+        citations = self._format_citations(hits)
+        return f"{body}\n\n{citations}"

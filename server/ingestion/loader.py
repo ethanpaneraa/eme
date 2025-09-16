@@ -62,7 +62,7 @@ def _summarize_system(obj: Dict) -> Optional[str]:
     if ev == "message.deleted":
         return "A message was deleted by an admin."
     if ev == "message.update":
-        return None  # edits are noisy; skip indexing
+        return None
     return None
 
 def load_jsonl(path: pathlib.Path) -> List[Dict]:
@@ -116,7 +116,6 @@ def normalize_records(records: List[Dict]) -> List[Dict]:
             "attachments": r.get("attachments") or [],
         }
 
-        # Reply threading pointers
         reply_to = None
         for att in msg["attachments"]:
             if att.get("type") == "reply":
@@ -124,16 +123,13 @@ def normalize_records(records: List[Dict]) -> List[Dict]:
                 break
         msg["reply_to"] = str(reply_to) if reply_to else None
 
-        # Simple content signals
         msg["has_link"] = bool(re.search(r"https?://", raw_text or ""))
         msg["has_image"] = any(a.get("type") == "image" for a in msg["attachments"])
 
-        # Coarse type
         msg["msg_type"] = _classify_type(text, is_system=is_system)
 
         out.append(msg)
 
-    # sort chronologically
     out.sort(key=lambda m: m["created_at_iso"])
     return out
 
@@ -162,8 +158,8 @@ def harvest_qna_chunks(
     For every message that looks like a question, build one chunk:
       [question] + replies thread + nearby answers within time horizon.
     """
-    # Build index by time for nearby answers
-    by_time = msgs  # already sorted
+
+    by_time = msgs
 
     def within_horizon(q_idx: int, a_idx: int) -> bool:
         t_q = by_time[q_idx]["created_at_iso"]
@@ -179,20 +175,16 @@ def harvest_qna_chunks(
         if q["msg_type"] != "question":
             continue
 
-        # Compose text block
         lines = [f"→ [{q['created_at_iso']}] {q['sender_name']}: {q['text']}"]
-        # thread replies
         for rid in children.get(q["id"], [])[:max_answers]:
             r = id_to_msg[rid]
             lines.append(f"· [{r['created_at_iso']}] {r['sender_name']}: {r['text']}")
 
-        # temporal neighbors after the question (if no explicit reply)
         added = 0
         j = i + 1
         while j < len(by_time) and added < max_answers:
             cand = by_time[j]
             if within_horizon(i, j) and not cand["is_system"]:
-                # skip pure banter unless replying or semi-substantive
                 if len(cand["text"].split()) >= 3 or cand["reply_to"] == q["id"]:
                     lines.append(f"· [{cand['created_at_iso']}] {cand['sender_name']}: {cand['text']}")
                     added += 1
@@ -227,12 +219,10 @@ def harvest_announcement_chunks(msgs: List[Dict]) -> List[MessageChunk]:
         if m["msg_type"] not in {"announcement","system"}:
             continue
         text = m["text"]
-        # Skip empty system summaries that ended up blank
         if not text:
             continue
         prefix = "→"
         lines = [f"{prefix} [{m['created_at_iso']}] {m['sender_name']}: {text}"]
-        # include link indicator
         if m["has_link"]:
             lines.append("(contains link)")
         if m["has_image"]:
@@ -267,7 +257,7 @@ def harvest_context_windows(msgs: List[Dict], window: int = 1) -> List[MessageCh
         if not m["text"]:
             continue
         if len(m["text"].split()) < 3 and not m["reply_to"]:
-            continue  # skip one-worders unless part of thread
+            continue
 
         left = max(0, i - window)
         right = min(len(msgs), i + window + 1)
@@ -303,7 +293,6 @@ def make_chunks_from_records(records: List[Dict], window: int = 1) -> List[Messa
     chunks += harvest_announcement_chunks(msgs)
     chunks += harvest_context_windows(msgs, window=window)
 
-    # Optional: de-duplicate identical texts with same msg_id+type
     seen = set()
     deduped = []
     for c in chunks:

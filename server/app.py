@@ -2,22 +2,21 @@ import os, re, time, logging
 from typing import Dict, Any
 import httpx
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from rag.pipeline import RAGPipelineGM  # your pipeline that calls Chroma + LLM
+from rag.pipeline import RAGPipelineGM
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("eme")
 
-BOT_ID = os.environ.get("GROUPME_BOT_ID")          # required to post
+BOT_ID = os.environ.get("GROUPME_BOT_ID")
 BOT_NAME = os.environ.get("GROUPME_BOT_NAME", "eme")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")  # used by your pipeline
-POST_URL = "https://api.groupme.com/v3/bots/post"
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+POST_URL = os.environ.get("GROUPME_API_URL" + "/bots/post", "https://api.groupme.com/v3") + "/bots/post"
 
-# Simple mention detector:
 MENTION_RE = re.compile(r"(^|\s)@eme([^\w]|$)", re.IGNORECASE)
 
-# Initialize pipeline once (uses your PersistentClient by default)
 rag = RAGPipelineGM()
 
 app = FastAPI()
@@ -41,15 +40,11 @@ def is_mention_of_bot(msg: GroupMeMessage) -> bool:
     if not txt:
         return False
 
-    # 1) Text contains @eme
     if MENTION_RE.search(txt):
         return True
 
-    # 2) Or an explicit mention attachment (GroupMe sometimes includes this)
     for att in msg.attachments:
         if isinstance(att, dict) and att.get("type") == "mentions":
-            # mentions attachment has loci / user_ids; we don't have bot user id,
-            # so fallback to text match. You can expand this if you capture it.
             return True
     return False
 
@@ -59,21 +54,114 @@ async def post_message(text: str):
         r = await client.post(POST_URL, json=data)
         r.raise_for_status()
 
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    html = """<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>eme</title>
+    <style>
+      @font-face {
+        font-family: 'Geist Mono';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('https://vercel.com/font/geist-mono/Geist-Mono-Regular.woff2') format('woff2');
+      }
+
+      :root {
+        --gray-00: #111110;
+        --gray-06: #3b3a37;
+        --gray-09: #6f6d66;
+        --gray-11: #b5b3ad;
+        --gray-A03: #e3e2de;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--gray-00);
+        color: var(--gray-11);
+        font-family: "Geist Mono", monospace;
+      }
+
+      .wrap {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 16px;
+      }
+
+      .card {
+        max-width: 600px;
+        width: 100%;
+        border: 1px solid var(--gray-06);
+        padding: 40px 32px;
+        background: var(--gray-00);
+      }
+
+      h1 {
+        margin: 0 0 24px 0;
+        font-size: 24px;
+        font-weight: 400;
+      }
+
+      p {
+        margin: 0 0 24px 0;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--gray-11);
+        text-decoration: underline;
+      }
+
+      .footer {
+        margin-top: 32px;
+        font-size: 14px;
+        color: var(--gray-09);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <main class="card">
+        <h1>eme</h1>
+        <p>
+          hi! it seems that you found the server url for eme, good find! sadly, there's not much that you can do here...</code>
+        </p>
+        <p>
+         to chat with eme, please go to the <a href="https://groupme.com/join_group/89417887/c1x6DI3U" target="_blank">emerging coders groupme</a> and tag @eme in a message. if you need help, please reach out to <a href="https://ethanpinedaa.dev/" target="_blank" rel="noopener noreferrer">ethan pineda</a>.
+        </p>
+        <div class="footer">
+          built by <a href="https://ethanpinedaa.dev/" target="_blank" rel="noopener noreferrer">ethan pineda</a> ·
+          project for <a href="https://emergingcoders.org/" target="_blank" rel="noopener noreferrer">emerging coders</a>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>"""
+    return HTMLResponse(html)
+
+
+
 @app.post("/bot/callback")
 async def bot_callback(req: Request):
-    # GroupMe POSTs a single message payload
     payload = await req.json()
     msg = GroupMeMessage(**payload)
-
-    # Avoid loops: ignore our own bot & system messages
     if msg.sender_type != "user":
         return Response(status_code=204)
 
-    # Only respond when mentioned
     if not is_mention_of_bot(msg):
         return Response(status_code=204)
 
-    # Build a query by stripping the mention
     query = re.sub(MENTION_RE, " ", (msg.text or "")).strip()
     if not query:
         await post_message("Hi! Ask me something like “@eme when is Space Apps?”")
@@ -81,10 +169,8 @@ async def bot_callback(req: Request):
 
     log.info(f"@{BOT_NAME} asked: {query}")
 
-    # Generate answer from your RAG index
     try:
         answer = rag.generate(query, k=6)
-        # Keep replies short-ish; GroupMe messages cap at ~1000 chars
         if len(answer) > 950:
             answer = answer[:950] + "…"
         await post_message(answer)
@@ -93,3 +179,7 @@ async def bot_callback(req: Request):
         await post_message("Sorry, I hit an error answering that.")
 
     return Response(status_code=200)
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
