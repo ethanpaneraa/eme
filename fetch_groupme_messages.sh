@@ -12,7 +12,7 @@ OUTFILE="$3"
 # make sure we start fresh
 > "$OUTFILE"
 
-# initial call: no before_id
+# initial call: no before_ide
 before_id=""
 
 while :; do
