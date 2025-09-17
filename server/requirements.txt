@@ -1,6 +1,7 @@
 openai>=1.35,<1.46
-httpx<0.28
 uvicorn[standard]
 fastapi
 chromadb
 python-dotenv
+chromadb>=1.0.0
+httpx<0.28

@@ -14,13 +14,60 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-CHROMADB_SERVER = os.getenv("CHROMADB_SERVER") or "http://localhost:8000"
-CHROMADB_TOKEN  = os.getenv("CHROMADB_TOKEN") or "dummy"
-COLLECTION_NAME = os.getenv("COLLECTION_NAME") or "groupme"
-OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
+# --- Chroma / OpenAI config ---
+CHROMADB_SERVER   = os.getenv("CHROMADB_SERVER", "http://localhost:8001")
+CHROMADB_TOKEN    = os.getenv("CHROMADB_TOKEN")  # leave unset for local unless container enforces auth
+CHROMADB_TENANT   = os.getenv("CHROMADB_TENANT", "default_tenant")
+CHROMADB_DATABASE = os.getenv("CHROMADB_DATABASE", "default_database")
+COLLECTION_NAME   = os.getenv("COLLECTION_NAME", "groupme")
+OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY")
 
-EMBED_MODEL = os.getenv("EMBED_MODEL") or "text-embedding-3-small"
-CHAT_MODEL  = os.getenv("CHAT_MODEL") or "gpt-4o-mini"
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
+CHAT_MODEL  = os.getenv("CHAT_MODEL", "gpt-4o-mini")
+
+
+def _host_only_client():
+    """Create a client WITHOUT tenant/database so we can bootstrap them first."""
+    kwargs: Dict[str, Any] = dict(host=CHROMADB_SERVER)
+    if CHROMADB_TOKEN:
+        kwargs["settings"] = Settings(
+            chroma_client_auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
+            chroma_client_auth_credentials=CHROMADB_TOKEN,
+        )
+    return chromadb.HttpClient(**kwargs)
+
+
+def _scoped_client():
+    """Create the normal, scoped client AFTER tenant/database exist."""
+    kwargs: Dict[str, Any] = dict(
+        host=CHROMADB_SERVER,
+        tenant=CHROMADB_TENANT,
+        database=CHROMADB_DATABASE,
+    )
+    if CHROMADB_TOKEN:
+        kwargs["settings"] = Settings(
+            chroma_client_auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
+            chroma_client_auth_credentials=CHROMADB_TOKEN,
+        )
+    return chromadb.HttpClient(**kwargs)
+
+
+def _ensure_tenant_db():
+    """
+    Idempotently create tenant+database via the admin client.
+    We must use a host-only client to avoid validation failures.
+    """
+    client = _host_only_client()
+    admin = client._admin_client
+    try:
+        admin.create_tenant(name=CHROMADB_TENANT)
+    except Exception:
+        pass
+    try:
+        admin.create_database(name=CHROMADB_DATABASE, tenant=CHROMADB_TENANT)
+    except Exception:
+        pass
+
 
 @dataclass
 class RetrievedHit:
@@ -28,28 +75,26 @@ class RetrievedHit:
     meta: Dict[str, Any]
     score: float
 
+
 class RAGPipelineGM:
     def __init__(self, batch_size: int = 64):
-        # TODO: switch to remote chrome client in the future
-        # self.client = chromadb.HttpClient(
-        #     host=CHROMADB_SERVER,
-        #     settings=Settings(
-        #         chroma_client_auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
-        #         chroma_client_auth_credentials=CHROMADB_TOKEN,
-        #     ),
-        # )
-        self.client = chromadb.PersistentClient(path="index/chroma")
+        # 1) Ensure tenant/db exist (safe to run every boot)
+        _ensure_tenant_db()
+        # 2) Now connect scoped to tenant/db
+        self.client = _scoped_client()
+        # 3) Collection
         self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"},
         )
+        # 4) LLM + batching
         self.llm = OpenAI(api_key=OPENAI_API_KEY)
         self.batch_size = batch_size
 
     def _batch_embed(self, texts: List[str]) -> List[List[float]]:
-        out = []
+        out: List[List[float]] = []
         for i in range(0, len(texts), self.batch_size):
-            chunk = texts[i:i+self.batch_size]
+            chunk = texts[i : i + self.batch_size]
             resp = self.llm.embeddings.create(model=EMBED_MODEL, input=chunk)
             out.extend([e.embedding for e in resp.data])
         return out
@@ -75,8 +120,8 @@ class RAGPipelineGM:
             n_results=k,
             include=["documents", "metadatas", "distances"],
         )
-        hits = []
-        docs = res.get("documents", [[]])[0]
+        hits: List[RetrievedHit] = []
+        docs  = res.get("documents", [[]])[0]
         metas = res.get("metadatas", [[]])[0]
         dists = res.get("distances", [[]])[0]
         for doc, meta, dist in zip(docs, metas, dists):
@@ -94,15 +139,15 @@ class RAGPipelineGM:
         )
         ctx = "\n\n--- EXCERPTS ---\n"
         for i, h in enumerate(hits, 1):
-            sender = h.meta.get("sender_name","Unknown")
+            sender = h.meta.get("sender_name", "Unknown")
             date = (h.meta.get("created_at_iso") or "")[:10]
-            mtype = h.meta.get("msg_type","")
+            mtype = h.meta.get("msg_type", "")
             ctx += f"[{i}] ({mtype}) ({sender} • {date})\n{h.text}\n\n"
         user = (
             f"{ctx}--- QUESTION ---\n{query}\n\n"
             "Write only the answer body (no headings, no inline citations)."
         )
-        return [{"role":"system","content":sys}, {"role":"user","content":user}]
+        return [{"role": "system", "content": sys}, {"role": "user", "content": user}]
 
     def _format_citations(self, hits: List[RetrievedHit]) -> str:
         """
@@ -132,13 +177,9 @@ class RAGPipelineGM:
         for i, h in enumerate(hits, 1):
             sender = h.meta.get("sender_name", "Unknown")
             date_s = _fmt_mmddyy(h.meta)
-            if date_s:
-                lines.append(f"[{i}] {sender} — {date_s}")
-            else:
-                lines.append(f"[{i}] {sender}")
+            lines.append(f"[{i}] {sender} — {date_s}" if date_s else f"[{i}] {sender}")
 
         return "\n".join(lines)
-
 
     def generate(self, query: str, k: int = 6) -> str:
         hits = self.retrieve(query, k=k)

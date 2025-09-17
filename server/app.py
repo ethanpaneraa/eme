@@ -13,7 +13,7 @@ log = logging.getLogger("eme")
 BOT_ID = os.environ.get("GROUPME_BOT_ID")
 BOT_NAME = os.environ.get("GROUPME_BOT_NAME", "eme")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-POST_URL = os.environ.get("GROUPME_API_URL" + "/bots/post", "https://api.groupme.com/v3") + "/bots/post"
+POST_URL = os.environ.get("GROUPME_API_URL") + "/bots/post"
 
 MENTION_RE = re.compile(r"(^|\s)@eme([^\w]|$)", re.IGNORECASE)
 
