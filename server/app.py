@@ -170,12 +170,10 @@ async def root():
 
 @app.post("/bot/callback")
 async def bot_callback(req: Request):
-<<<<<<< HEAD
     """Handle GroupMe bot callback messages."""
     start_time = time.time()
     client_ip = req.client.host if req.client else "unknown"
     user_agent = req.headers.get("user-agent", "unknown")
-=======
     payload = await req.json()
     msg = GroupMeMessage(**payload)
     if msg.sender_type != "user":
@@ -190,7 +188,6 @@ async def bot_callback(req: Request):
         return Response(status_code=200)
 
     log.info(f"@{BOT_NAME} asked: {query}")
->>>>>>> 4ce25ed9c119a7e9fed362c5919ea09db09f8ff0
 
     try:
         payload = await req.json()
