@@ -186,10 +186,12 @@ export function ChatInterface({ className = "" }: ChatInterfaceProps) {
               border: "1px solid var(--gray-09)",
             }}
             onMouseEnter={(e) =>
-              (e.target.style.backgroundColor = "var(--gray-09)")
+              ((e.target as HTMLButtonElement).style.backgroundColor =
+                "var(--gray-09)")
             }
             onMouseLeave={(e) =>
-              (e.target.style.backgroundColor = "var(--gray-06)")
+              ((e.target as HTMLButtonElement).style.backgroundColor =
+                "var(--gray-06)")
             }
           >
             Send
