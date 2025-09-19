@@ -4,3 +4,4 @@ uvicorn[standard]
 fastapi
 chromadb
 python-dotenv
+pydantic-settings

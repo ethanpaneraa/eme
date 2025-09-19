@@ -1,4 +1,4 @@
-import os, re, time, asyncio
+import re, time, asyncio
 from typing import Dict, Any
 import httpx
 from fastapi import FastAPI, Request, Response
@@ -8,14 +8,16 @@ from pydantic import BaseModel
 
 from rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger, log_request_info, log_bot_interaction
+from config.settings import settings
 
 setup_logging_from_env()
 log = get_logger(__name__)
 
-BOT_ID = os.environ.get("GROUPME_BOT_ID")
-BOT_NAME = os.environ.get("GROUPME_BOT_NAME", "eme")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-POST_URL = os.environ.get("GROUPME_API_URL" + "/bots/post", "https://api.groupme.com/v3") + "/bots/post"
+# Use settings instead of direct environment variable access
+BOT_ID = settings.GROUPME_BOT_ID
+BOT_NAME = settings.GROUPME_BOT_NAME
+OPENAI_API_KEY = settings.OPENAI_API_KEY
+POST_URL = f"{settings.GROUPME_API_URL}/bots/post"
 
 MENTION_RE = re.compile(r"(^|\s)@eme([^\w]|$)", re.IGNORECASE)
 
@@ -25,18 +27,13 @@ log.info("RAG pipeline initialized successfully")
 
 app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
 
-allowed_origins = [
-    "http://localhost:5173",
-    "http://localhost:5174",
-]
-
-frontend_url = os.environ.get("FRONTEND_URL")
-if frontend_url:
-    allowed_origins.append(frontend_url)
+# Debug: Log settings
+log.info(f"Environment: {settings.ENV}")
+log.info(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
