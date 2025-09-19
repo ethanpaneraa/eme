@@ -288,8 +288,9 @@ class RAGPipelineGM:
             )
 
             body = resp.choices[0].message.content.strip()
-            citations = self._format_citations(hits)
-            result = f"{body}\n\n{citations}"
+            # citations = self._format_citations(hits)
+            #  result = f"{body}\n\n{citations}"
+            result = body
 
             processing_time = time.time() - start_time
             logger.info(f"Generated response in {processing_time:.3f}s (length: {len(result)} chars)")

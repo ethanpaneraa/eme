@@ -1,7 +1,22 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://vercel.com/font/geist-mono/Geist-Mono-Regular.woff2")
+    format("woff2");
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --gray-00: #111110;
+  --gray-06: #3b3a37;
+  --gray-09: #6f6d66;
+  --gray-11: #b5b3ad;
+  --gray-A03: #e3e2de;
+
+  font-family: "Geist Mono", monospace;
   line-height: 1.5;
   font-weight: 400;
 
@@ -13,4 +28,7 @@
 
 body {
   margin: 0;
+  padding: 0;
+  background: var(--gray-00);
+  color: var(--gray-11);
 }

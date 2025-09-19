@@ -1,8 +1,9 @@
-import os, re, time
+import os, re, time, asyncio
 from typing import Dict, Any
 import httpx
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from rag.pipeline import RAGPipelineGM
@@ -23,6 +24,16 @@ rag = RAGPipelineGM()
 log.info("RAG pipeline initialized successfully")
 
 app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 log.info("FastAPI application initialized")
 
 class GroupMeMessage(BaseModel):
@@ -38,6 +49,9 @@ class GroupMeMessage(BaseModel):
     system: bool
     text: str | None = None
     user_id: str | None = None
+
+class ChatMessage(BaseModel):
+    message: str
 
 def is_mention_of_bot(msg: GroupMeMessage) -> bool:
     txt = (msg.text or "").strip()
@@ -240,6 +254,47 @@ async def bot_callback(req: Request):
         log.error(f"Bot callback error after {response_time:.3f}s: {str(e)}")
         log_request_info(log, "POST", "/bot/callback", 500, response_time, user_agent, client_ip)
         return Response(status_code=500)
+
+@app.post("/chat")
+async def chat_endpoint(chat_msg: ChatMessage):
+    """Chat endpoint for frontend."""
+    start_time = time.time()
+    query = chat_msg.message.strip()
+
+    if not query:
+        return StreamingResponse(
+            iter(["Please ask me something!"],),
+            media_type="text/plain"
+        )
+
+    log.info(f"Frontend chat query: {query[:100]}...")
+
+    try:
+        rag_start_time = time.time()
+        answer = rag.generate(query, k=6)
+        rag_time = time.time() - rag_start_time
+
+        # No truncation needed for frontend - it can handle longer responses
+        log.info(f"Successfully generated response for frontend in {rag_time:.3f}s")
+
+        # Stream the response
+        async def generate_response():
+            for char in answer:
+                yield char.encode('utf-8')
+                await asyncio.sleep(0.01)
+
+        return StreamingResponse(
+            generate_response(),
+            media_type="text/plain"
+        )
+
+    except Exception as e:
+        rag_time = time.time() - rag_start_time
+        log.error(f"RAG generation failed for frontend after {rag_time:.3f}s: {str(e)}")
+        return StreamingResponse(
+            iter(["Sorry, I hit an error answering that."]),
+            media_type="text/plain"
+        )
 
 @app.get("/health")
 async def health_check():
