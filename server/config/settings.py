@@ -13,6 +13,11 @@ class Settings(BaseSettings, extra="allow"):
 
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
+    # Pinecone settings
+    PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
+    PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "groupme-messages")
+    PINECONE_ENVIRONMENT: str = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
+
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
 
     ALLOWED_ORIGINS: List[str] = []
