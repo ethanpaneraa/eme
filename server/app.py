@@ -25,10 +25,18 @@ log.info("RAG pipeline initialized successfully")
 
 app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
 
-# Add CORS middleware
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+]
+
+frontend_url = os.environ.get("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,13 +104,7 @@ async def root():
     />
     <title>eme</title>
     <style>
-      @font-face {
-        font-family: 'Geist Mono';
-        font-style: normal;
-        font-weight: 400;
-        font-display: swap;
-        src: url('https://vercel.com/font/geist-mono/Geist-Mono-Regular.woff2') format('woff2');
-      }
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
 
       :root {
         --gray-00: #111110;
@@ -117,7 +119,7 @@ async def root():
         padding: 0;
         background: var(--gray-00);
         color: var(--gray-11);
-        font-family: "Geist Mono", monospace;
+        font-family: "JetBrains Mono", monospace;
       }
 
       .wrap {
