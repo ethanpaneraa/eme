@@ -1,2 +1,0 @@
-2025-09-18 19:40:29 | root | [31mERROR[0m | test_basic_logging:24 | This is an error message
-2025-09-18 19:40:29 | root | [35mCRITICAL[0m | test_basic_logging:25 | This is a critical message

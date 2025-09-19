@@ -1,4 +1,4 @@
-import os, json
+import os, json, re
 from dataclasses import dataclass
 from typing import Any, Dict, List
 from dotenv import load_dotenv
@@ -150,11 +150,50 @@ class RAGPipelineGM:
             logger.error(f"Failed to retrieve documents after {processing_time:.3f}s: {str(e)}")
             raise
 
+    def _is_general_question(self, query: str) -> bool:
+        """Detect if this is a general question about the bot that doesn't need GroupMe context."""
+        general_patterns = [
+            r'\bwhat\s+are\s+you\b',
+            r'\bwho\s+are\s+you\b',
+            r'\bwhat\s+is\s+your\s+name\b',
+            r'\bwhat\s+do\s+you\s+do\b',
+            r'\bhow\s+do\s+you\s+work\b',
+            r'\bwhat\s+can\s+you\s+do\b',
+            r'\bwhat\s+are\s+your\s+capabilities\b',
+            r'\bhelp\b',
+            r'\bcommands?\b',
+            r'\bhow\s+to\s+use\b',
+            r'\bwhat\s+should\s+I\s+ask\b'
+        ]
+
+        query_lower = query.lower().strip()
+        for pattern in general_patterns:
+            if re.search(pattern, query_lower):
+                return True
+        return False
+
+    def _build_general_prompt(self, query: str) -> List[Dict[str, str]]:
+        """Build prompt for general questions about the bot."""
+        sys = (
+            "You are eme, a helpful AI assistant for the Emerging Coders GroupMe chat. "
+            "You can answer questions about courses, internships, career advice, and general college life "
+            "based on the chat history. You're friendly, knowledgeable, and always try to be helpful. "
+            "Keep responses conversational and concise (under 200 words)."
+        )
+
+        user = (
+            f"Question: {query}\n\n"
+            "Please answer this question about yourself or your capabilities. "
+            "Be helpful and friendly in your response."
+        )
+
+        return [{"role": "system", "content": sys}, {"role": "user", "content": user}]
+
     def _build_prompt(self, query: str, hits: List[RetrievedHit]) -> List[Dict[str, str]]:
         sys = (
             "You answer newcomer questions using ONLY the provided GroupMe excerpts.\n"
             "Write a helpful, clear answer of roughly 120–200 words. Be specific and actionable.\n"
-            "If the context doesn’t contain the answer, say so briefly and suggest what to ask next.\n"
+            "If the context doesn't contain the answer, say so briefly and suggest what to ask next.\n"
             "Do NOT include inline citations in the body. You will not reference numbers in the body.\n"
             "Prefer announcements for logistics and time-sensitive info."
         )
@@ -212,6 +251,26 @@ class RAGPipelineGM:
         start_time = time.time()
 
         try:
+            # Check if this is a general question about the bot
+            if self._is_general_question(query):
+                logger.info(f"Detected general question, using general prompt: {query[:50]}...")
+                msgs = self._build_general_prompt(query)
+
+                logger.debug(f"Calling OpenAI API with model {CHAT_MODEL} for general question")
+                resp = self.llm.chat.completions.create(
+                    model=CHAT_MODEL,
+                    messages=msgs,
+                    temperature=0.3,
+                    max_tokens=350,
+                )
+
+                result = resp.choices[0].message.content.strip()
+                processing_time = time.time() - start_time
+                logger.info(f"Generated general response in {processing_time:.3f}s (length: {len(result)} chars)")
+                log_rag_operation(logger, "generate_general", query, 0, processing_time)
+                return result
+
+            # Otherwise, use RAG pipeline with GroupMe context
             hits = self.retrieve(query, k=k)
             if not hits:
                 logger.warning(f"No relevant documents found for query: {query[:50]}...")
