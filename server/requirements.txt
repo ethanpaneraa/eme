@@ -3,5 +3,6 @@ httpx<0.28
 uvicorn[standard]
 fastapi
 chromadb
+pinecone-client
 python-dotenv
 pydantic-settings
