@@ -13,7 +13,6 @@ from config.settings import settings
 setup_logging_from_env()
 log = get_logger(__name__)
 
-# Use settings instead of direct environment variable access
 BOT_ID = settings.GROUPME_BOT_ID
 BOT_NAME = settings.GROUPME_BOT_NAME
 OPENAI_API_KEY = settings.OPENAI_API_KEY
@@ -27,7 +26,6 @@ log.info("RAG pipeline initialized successfully")
 
 app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
 
-# Debug: Log settings
 log.info(f"Environment: {settings.ENV}")
 log.info(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")
 

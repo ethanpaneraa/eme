@@ -23,12 +23,10 @@ OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY")
 EMBED_MODEL = os.getenv("EMBED_MODEL") or "text-embedding-3-small"
 CHAT_MODEL  = os.getenv("CHAT_MODEL") or "gpt-4o-mini"
 
-# Pinecone configuration (used when VECTOR_BACKEND is pinecone)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME") or "groupme-messages"
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT") or "us-east-1"
 
-# Backend selector: 'chroma' or 'pinecone'
 VECTOR_BACKEND = os.getenv("VECTOR_BACKEND")
 
 @dataclass
@@ -40,12 +38,11 @@ class RetrievedHit:
 class RAGPipelineGM:
     def __init__(self, batch_size: int = 64):
         logger.info(f"Initializing RAG pipeline with batch_size={batch_size}")
-        # Determine backend
+        # figure out which kind of vector database to use
         self.backend = (VECTOR_BACKEND or ("pinecone" if PINECONE_API_KEY else "chroma")).lower()
         logger.info(f"Vector backend selected: {self.backend}")
 
         if self.backend == "pinecone":
-            # Initialize Pinecone lazily to avoid import if not used
             try:
                 if not PINECONE_API_KEY:
                     raise ValueError("PINECONE_API_KEY environment variable is required for Pinecone backend")
@@ -56,7 +53,6 @@ class RAGPipelineGM:
                 self.pc = Pinecone(api_key=PINECONE_API_KEY)
                 logger.info("Connected to Pinecone")
 
-                # Ensure index exists
                 try:
                     indexes = self.pc.list_indexes()
                     index_names = [idx.name for idx in indexes]
@@ -148,7 +144,6 @@ class RAGPipelineGM:
             embs  = self._batch_embed(texts)
 
             if self.backend == "pinecone":
-                # Upsert into Pinecone (store text in metadata)
                 vectors = []
                 for id_, emb, meta, text in zip(ids, embs, metas, texts):
                     meta = dict(meta)
