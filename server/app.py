@@ -158,7 +158,7 @@ async def root():
         </p>
         <div class="footer">
           built by <a href="https://ethanpinedaa.dev/" target="_blank" rel="noopener noreferrer">ethan pineda</a> ·
-          project for <a href="https://emergingcoders.org/" target="_blank" rel="noopener noreferrer">emerging coders</a>
+          for <a href="https://emergingcoders.org/" target="_blank" rel="noopener noreferrer">emerging coders</a>
         </div>
       </main>
     </div>
