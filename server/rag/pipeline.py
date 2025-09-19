@@ -377,8 +377,15 @@ class RAGPipelineGM:
         if self.backend != "pinecone":
             raise NotImplementedError("delete_all is only available for Pinecone backend")
         logger.info("Deleting all vectors from Pinecone index")
-        self.index.delete(delete_all=True)
-        logger.info("Deleted all vectors from Pinecone index")
+        try:
+            self.index.delete(delete_all=True)
+            logger.info("Deleted all vectors from Pinecone index")
+        except Exception as e:
+            # Some Pinecone deployments return 404 if no namespace exists yet
+            if "Namespace not found" in str(e):
+                logger.info("No existing namespace found; index already empty")
+                return
+            raise
 
     def get_stats(self) -> Dict[str, Any]:
         """Return index statistics (only implemented for Pinecone backend)."""
