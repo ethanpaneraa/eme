@@ -35,8 +35,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 log.info("FastAPI application initialized")
@@ -300,3 +301,15 @@ async def health_check():
     """Health check endpoint."""
     log.debug("Health check requested")
     return {"status": "ok"}
+
+@app.get("/cors-test")
+async def cors_test(request: Request):
+    """CORS test endpoint to debug CORS issues."""
+    origin = request.headers.get("origin")
+    log.info(f"CORS test request from origin: {origin}")
+    return {
+        "status": "ok",
+        "origin": origin,
+        "allowed_origins": settings.ALLOWED_ORIGINS,
+        "env": settings.ENV
+    }
