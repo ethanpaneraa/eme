@@ -1,4 +1,4 @@
-import os, re, time, logging
+import os, re, time
 from typing import Dict, Any
 import httpx
 from fastapi import FastAPI, Request, Response
@@ -6,9 +6,10 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from rag.pipeline import RAGPipelineGM
+from logging_config import setup_logging_from_env, get_logger, log_request_info, log_bot_interaction
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("eme")
+setup_logging_from_env()
+log = get_logger(__name__)
 
 BOT_ID = os.environ.get("GROUPME_BOT_ID")
 BOT_NAME = os.environ.get("GROUPME_BOT_NAME", "eme")
@@ -17,9 +18,12 @@ POST_URL = os.environ.get("GROUPME_API_URL" + "/bots/post", "https://api.groupme
 
 MENTION_RE = re.compile(r"(^|\s)@eme([^\w]|$)", re.IGNORECASE)
 
+log.info("Initializing RAG pipeline...")
 rag = RAGPipelineGM()
+log.info("RAG pipeline initialized successfully")
 
-app = FastAPI()
+app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
+log.info("FastAPI application initialized")
 
 class GroupMeMessage(BaseModel):
     attachments: list = []
@@ -49,13 +53,25 @@ def is_mention_of_bot(msg: GroupMeMessage) -> bool:
     return False
 
 async def post_message(text: str):
-    async with httpx.AsyncClient(timeout=10) as client:
-        data = {"bot_id": BOT_ID, "text": text}
-        r = await client.post(POST_URL, json=data)
-        r.raise_for_status()
+    """Post a message to GroupMe via the bot API."""
+    start_time = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            data = {"bot_id": BOT_ID, "text": text}
+            log.debug(f"Posting message to GroupMe: {text[:100]}...")
+            r = await client.post(POST_URL, json=data)
+            r.raise_for_status()
+            response_time = time.time() - start_time
+            log.info(f"Successfully posted message to GroupMe in {response_time:.3f}s")
+    except Exception as e:
+        response_time = time.time() - start_time
+        log.error(f"Failed to post message to GroupMe after {response_time:.3f}s: {str(e)}")
+        raise
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
+    """Serve the main landing page."""
+    log.debug("Serving root page")
     html = """<!doctype html>
 <html lang="en">
   <head>
@@ -154,32 +170,65 @@ async def root():
 
 @app.post("/bot/callback")
 async def bot_callback(req: Request):
-    payload = await req.json()
-    msg = GroupMeMessage(**payload)
-    if msg.sender_type != "user":
-        return Response(status_code=204)
-
-    if not is_mention_of_bot(msg):
-        return Response(status_code=204)
-
-    query = re.sub(MENTION_RE, " ", (msg.text or "")).strip()
-    if not query:
-        await post_message("Hi! Ask me something like “@eme when is Space Apps?”")
-        return Response(status_code=200)
-
-    log.info(f"@{BOT_NAME} asked: {query}")
+    """Handle GroupMe bot callback messages."""
+    start_time = time.time()
+    client_ip = req.client.host if req.client else "unknown"
+    user_agent = req.headers.get("user-agent", "unknown")
 
     try:
-        answer = rag.generate(query, k=6)
-        if len(answer) > 950:
-            answer = answer[:950] + "…"
-        await post_message(answer)
-    except Exception as e:
-        log.exception("Failed to answer")
-        await post_message("Sorry, I hit an error answering that.")
+        payload = await req.json()
+        log.debug(f"Received bot callback from {client_ip}: {payload}")
 
-    return Response(status_code=200)
+        msg = GroupMeMessage(**payload)
+
+        log_request_info(log, "POST", "/bot/callback", 200, time.time() - start_time, user_agent, client_ip)
+
+        if msg.sender_type != "user":
+            log.debug(f"Skipping non-user message from sender_type: {msg.sender_type}")
+            return Response(status_code=204)
+
+        if not is_mention_of_bot(msg):
+            log.debug(f"Bot not mentioned in message from {msg.sender_id}")
+            return Response(status_code=204)
+
+        query = re.sub(MENTION_RE, " ", (msg.text or "")).strip()
+        if not query:
+            log.info(f"Empty query from user {msg.sender_id}, sending help message")
+            await post_message("Hi! Ask me something like \"@eme should I take CS214 and CS211 at the same time?\"")
+            return Response(status_code=200)
+
+        log.info(f"Processing query from user {msg.sender_id}: {query[:100]}...")
+
+        rag_start_time = time.time()
+        try:
+            answer = rag.generate(query, k=6)
+            rag_time = time.time() - rag_start_time
+
+            if len(answer) > 950:
+                answer = answer[:950] + "…"
+                log.warning(f"Truncated response for user {msg.sender_id} (was {len(answer)} chars)")
+
+            log_bot_interaction(log, query, answer, rag_time, msg.sender_id, msg.group_id)
+
+            await post_message(answer)
+            log.info(f"Successfully responded to user {msg.sender_id} in {rag_time:.3f}s")
+
+        except Exception as e:
+            rag_time = time.time() - rag_start_time
+            log.error(f"RAG generation failed for user {msg.sender_id} after {rag_time:.3f}s: {str(e)}")
+            await post_message("Sorry, I hit an error answering that.")
+            return Response(status_code=200)
+
+        return Response(status_code=200)
+
+    except Exception as e:
+        response_time = time.time() - start_time
+        log.error(f"Bot callback error after {response_time:.3f}s: {str(e)}")
+        log_request_info(log, "POST", "/bot/callback", 500, response_time, user_agent, client_ip)
+        return Response(status_code=500)
 
 @app.get("/health")
 async def health_check():
+    """Health check endpoint."""
+    log.debug("Health check requested")
     return {"status": "ok"}

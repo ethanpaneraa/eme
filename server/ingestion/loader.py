@@ -1,6 +1,9 @@
 import orjson, pathlib, datetime as dt, re
 from typing import List, Dict, Tuple, Optional
 from ingestion.models import MessageChunk
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 ##############
 # Utilities
@@ -66,18 +69,29 @@ def _summarize_system(obj: Dict) -> Optional[str]:
     return None
 
 def load_jsonl(path: pathlib.Path) -> List[Dict]:
+    """Load JSONL file and return list of records."""
+    logger.info(f"Loading JSONL file: {path}")
     recs = []
-    with path.open("rb") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = orjson.loads(line)
-            except orjson.JSONDecodeError:
-                continue
-            recs.append(obj)
-    return recs
+
+    try:
+        with path.open("rb") as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = orjson.loads(line)
+                    recs.append(obj)
+                except orjson.JSONDecodeError as e:
+                    logger.warning(f"Skipping invalid JSON on line {line_num}: {str(e)}")
+                    continue
+
+        logger.info(f"Successfully loaded {len(recs)} records from {path}")
+        return recs
+
+    except Exception as e:
+        logger.error(f"Failed to load JSONL file {path}: {str(e)}")
+        raise
 
 ##############
 # Core
@@ -87,9 +101,12 @@ def normalize_records(records: List[Dict]) -> List[Dict]:
     """
     Convert raw GroupMe JSON objects into normalized dicts we can thread.
     - Keep system messages as short summaries (only some types).
-    - Drop empty/attachments-only posts unless they’re replies.
+    - Drop empty/attachments-only posts unless they're replies.
     """
+    logger.info(f"Normalizing {len(records)} raw records")
     out = []
+    skipped_count = 0
+
     for r in records:
         is_system = bool(r.get("system"))
         raw_text = r.get("text")
@@ -98,10 +115,12 @@ def normalize_records(records: List[Dict]) -> List[Dict]:
         # If not system: skip messages with no text and no reply context
         if not is_system and not _clean_text(raw_text):
             # keep ONLY if it's a reply container with no text? GroupMe sometimes has images+reply; we skip for now.
+            skipped_count += 1
             continue
 
         text = _clean_text(sys_summary if is_system else raw_text or "")
         if not text and not is_system:
+            skipped_count += 1
             continue
 
         created_iso = _to_iso(r.get("created_at", 0))
@@ -131,6 +150,7 @@ def normalize_records(records: List[Dict]) -> List[Dict]:
         out.append(msg)
 
     out.sort(key=lambda m: m["created_at_iso"])
+    logger.info(f"Normalized {len(out)} messages (skipped {skipped_count} empty/invalid)")
     return out
 
 def build_threads(msgs: List[Dict]) -> Tuple[Dict[str, Dict], Dict[str, List[str]]]:
@@ -285,14 +305,29 @@ def harvest_context_windows(msgs: List[Dict], window: int = 1) -> List[MessageCh
     return chunks
 
 def make_chunks_from_records(records: List[Dict], window: int = 1) -> List[MessageChunk]:
+    """Convert raw records into message chunks for indexing."""
+    logger.info(f"Creating chunks from {len(records)} records with window={window}")
+
     msgs = normalize_records(records)
     id_to_msg, children = build_threads(msgs)
 
     chunks: List[MessageChunk] = []
-    chunks += harvest_qna_chunks(msgs, id_to_msg, children, answer_horizon_minutes=240, max_answers=8)
-    chunks += harvest_announcement_chunks(msgs)
-    chunks += harvest_context_windows(msgs, window=window)
 
+    # Harvest different types of chunks
+    qna_chunks = harvest_qna_chunks(msgs, id_to_msg, children, answer_horizon_minutes=240, max_answers=8)
+    logger.info(f"Created {len(qna_chunks)} Q&A chunks")
+
+    announcement_chunks = harvest_announcement_chunks(msgs)
+    logger.info(f"Created {len(announcement_chunks)} announcement chunks")
+
+    context_chunks = harvest_context_windows(msgs, window=window)
+    logger.info(f"Created {len(context_chunks)} context window chunks")
+
+    chunks += qna_chunks
+    chunks += announcement_chunks
+    chunks += context_chunks
+
+    # Deduplicate chunks
     seen = set()
     deduped = []
     for c in chunks:
@@ -301,4 +336,6 @@ def make_chunks_from_records(records: List[Dict], window: int = 1) -> List[Messa
             continue
         seen.add(key)
         deduped.append(c)
+
+    logger.info(f"Created {len(deduped)} total chunks (removed {len(chunks) - len(deduped)} duplicates)")
     return deduped
