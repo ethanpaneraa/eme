@@ -1,0 +1,45 @@
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:142 | Logging initialized - Level: INFO
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:143 | Log directory: /Users/ethanpineda/Desktop/EmergingCoders/groupme-vector/server/logs
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:144 | Console logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:145 | File logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | test_basic_logging:22 | This is an info message
+2025-09-18 19:40:29 | root | [33mWARNING[0m | test_basic_logging:23 | This is a warning message
+2025-09-18 19:40:29 | root | [31mERROR[0m | test_basic_logging:24 | This is an error message
+2025-09-18 19:40:29 | root | [35mCRITICAL[0m | test_basic_logging:25 | This is a critical message
+2025-09-18 19:40:29 | __main__ | [32mINFO[0m | log_bot_interaction:220 | BOT_INTERACTION | {'query': 'What courses should I take?', 'response_length': 41, 'response_time': '1.456s', 'timestamp': '2025-09-19T02:40:29.208484', 'user_id': 'test_user_123', 'group_id': 'test_group_456'}
+2025-09-18 19:40:29 | __main__ | [32mINFO[0m | log_rag_operation:247 | RAG_OPERATION | {'operation': 'retrieve', 'timestamp': '2025-09-19T02:40:29.208640', 'query': 'CS courses', 'results_count': 5, 'processing_time': '0.234s'}
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:142 | Logging initialized - Level: DEBUG
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:143 | Log directory: /Users/ethanpineda/Desktop/EmergingCoders/groupme-vector/server/logs
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:144 | Console logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:145 | File logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | test_environment_configuration:97 | Testing log level: DEBUG
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:142 | Logging initialized - Level: INFO
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:143 | Log directory: /Users/ethanpineda/Desktop/EmergingCoders/groupme-vector/server/logs
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:144 | Console logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | setup_logging:145 | File logging: True
+2025-09-18 19:40:29 | root | [32mINFO[0m | test_environment_configuration:97 | Testing log level: INFO
+2025-09-18 19:44:24 | root | [32mINFO[0m | setup_logging:134 | Logging initialized - Level: INFO
+2025-09-18 19:44:24 | root | [32mINFO[0m | setup_logging:135 | Log directory: /Users/ethanpineda/Desktop/EmergingCoders/groupme-vector/server/logs
+2025-09-18 19:44:24 | root | [32mINFO[0m | setup_logging:136 | Console logging: True
+2025-09-18 19:44:24 | root | [32mINFO[0m | setup_logging:137 | File logging: True
+2025-09-18 19:44:24 | __main__ | [32mINFO[0m | main:10 | Starting interactive chat session
+2025-09-18 19:44:24 | rag.pipeline | [32mINFO[0m | __init__:34 | Initializing RAG pipeline with batch_size=64
+2025-09-18 19:44:24 | chromadb.telemetry.product.posthog | [32mINFO[0m | __init__:22 | Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-09-18 19:44:26 | rag.pipeline | [32mINFO[0m | __init__:47 | Connected to ChromaDB persistent client
+2025-09-18 19:44:26 | rag.pipeline | [32mINFO[0m | __init__:57 | Connected to collection 'groupme'
+2025-09-18 19:44:26 | rag.pipeline | [32mINFO[0m | __init__:64 | Connected to OpenAI API
+2025-09-18 19:44:26 | rag.pipeline | [32mINFO[0m | __init__:70 | RAG pipeline initialization completed successfully
+2025-09-18 19:44:26 | __main__ | [32mINFO[0m | main:14 | RAG pipeline initialized successfully
+2025-09-18 19:44:26 | __main__ | [32mINFO[0m | main:20 | Chat session started
+2025-09-18 19:44:29 | __main__ | [32mINFO[0m | main:31 | User query: what are you?
+2025-09-18 19:44:29 | rag.pipeline | [32mINFO[0m | generate:211 | Generating response for query: what are you?...
+2025-09-18 19:44:30 | httpx | [32mINFO[0m | _send_single_request:1038 | HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-09-18 19:44:30 | rag.pipeline | [32mINFO[0m | _batch_embed:90 | Generated 1 embeddings in 1.005s
+2025-09-18 19:44:30 | rag.pipeline | [32mINFO[0m | retrieve:143 | Retrieved 6 documents in 1.235s
+2025-09-18 19:44:30 | rag.pipeline | [32mINFO[0m | log_rag_operation:239 | RAG_OPERATION | {'operation': 'retrieve', 'timestamp': '2025-09-19T02:44:30.542069', 'query': 'what are you?', 'results_count': 6, 'processing_time': '1.235s'}
+2025-09-18 19:44:34 | httpx | [32mINFO[0m | _send_single_request:1038 | HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-09-18 19:44:34 | rag.pipeline | [32mINFO[0m | generate:236 | Generated response in 5.017s (length: 541 chars)
+2025-09-18 19:44:34 | rag.pipeline | [32mINFO[0m | log_rag_operation:239 | RAG_OPERATION | {'operation': 'generate', 'timestamp': '2025-09-19T02:44:34.324278', 'query': 'what are you?', 'results_count': 6, 'processing_time': '5.017s'}
+2025-09-18 19:44:34 | __main__ | [32mINFO[0m | main:34 | Response generated successfully
+2025-09-18 19:44:44 | __main__ | [32mINFO[0m | main:26 | User requested exit
+2025-09-18 19:44:44 | __main__ | [32mINFO[0m | main:43 | Chat session ended

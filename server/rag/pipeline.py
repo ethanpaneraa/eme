@@ -6,7 +6,10 @@ import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
 from datetime import datetime, timezone
+<<<<<<< HEAD
 import time
+=======
+>>>>>>> 4ce25ed9c119a7e9fed362c5919ea09db09f8ff0
 
 from ingestion.models import MessageChunk
 from utils.cleaning import sanitize_metadata
