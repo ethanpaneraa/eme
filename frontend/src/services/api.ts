@@ -1,9 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface Message {
   id: string;
   text: string;
-  sender: "user" | "bot";
+  sender: 'user' | 'bot';
   timestamp: Date;
 }
 
@@ -20,9 +20,9 @@ export class ApiService {
 
   async sendMessage(message: string): Promise<ReadableStream<Uint8Array>> {
     const response = await fetch(`${this.baseUrl}/chat`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ message }),
     });
@@ -32,7 +32,7 @@ export class ApiService {
     }
 
     if (!response.body) {
-      throw new Error("No response body");
+      throw new Error('No response body');
     }
 
     return response.body;
