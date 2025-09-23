@@ -1,4 +1,4 @@
-### eme (GroupMe Vector Bot)
+### eme
 
 RAG-powered assistant for the Emerging Coders GroupMe. The backend ingests GroupMe messages into a vector store (ChromaDB by default, optional Pinecone) and serves answers via FastAPI. A React + Vite frontend provides a simple chat UI that streams responses.
 
