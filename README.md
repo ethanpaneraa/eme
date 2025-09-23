@@ -19,7 +19,26 @@ RAG-powered assistant for the Emerging Coders GroupMe. The backend ingests Group
 
 ## Backend Setup (FastAPI + RAG)
 
-1. Create a virtual environment and install dependencies:
+1. Create a virtual environment and install dependencies. We recommend using `uv` (a fast Python package manager) with a project-local virtual environment:
+
+```bash
+cd server
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+If you need to install `uv` first:
+
+```bash
+# macOS (Homebrew)
+brew install uv
+
+# or via the official installer
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Alternative using Python + pip:
 
 ```bash
 cd server
