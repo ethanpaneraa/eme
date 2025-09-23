@@ -151,3 +151,5 @@ Frontend environment variables:
 ## Security and Data
 
 Keep exported message data private. Do not commit `.env` files or raw exports. Use separate OpenAI and Pinecone keys for development and production.
+
+**If you need access to the production `.env` variables, reach out to Ethan**
