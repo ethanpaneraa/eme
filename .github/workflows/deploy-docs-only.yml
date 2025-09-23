@@ -38,7 +38,7 @@ jobs:
         with:
           personal_token: ${{ secrets.DOCS_REPO_TOKEN }}
           publish_dir: docs/build
-          external_repository: ethanpinedaa/docs.eme.ethanpinedaa.dev
+          external_repository: ethanpaneraa/docs.eme.ethanpinedaa.dev
           publish_branch: gh-pages
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com
