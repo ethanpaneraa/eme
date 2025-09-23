@@ -174,3 +174,37 @@ Keep exported message data private. Do not commit `.env` files or raw exports. U
 \*\*If you need access to the production `.env` variables, reach out to [Ethan](mailto:joshuapineda66@gmail.com)
 
 TODO:
+
+## Scheduled incremental fetch (daily at midnight)
+
+To securely fetch only new GroupMe messages and append to `server/data/raw/messages.jsonl`:
+
+1. Create a `.env` at the repo root (not committed) with:
+
+```bash
+GROUPME_ACCESS_TOKEN=your_token_here
+GROUPME_GROUP_ID=89417887
+```
+
+2. Test a one-off run:
+
+```bash
+bash server/scripts/fetch_incremental.sh
+```
+
+3. macOS launchd schedule (runs nightly at 00:00):
+
+```bash
+mkdir -p ~/Library/LaunchAgents
+cp server/scripts/com.ec.groupme.fetch.plist ~/Library/LaunchAgents/
+launchctl unload ~/Library/LaunchAgents/com.ec.groupme.fetch.plist 2>/dev/null || true
+launchctl load ~/Library/LaunchAgents/com.ec.groupme.fetch.plist
+launchctl list | grep com.ec.groupme.fetch || true
+```
+
+Logs:
+
+- Append log: `server/logs/fetch.log`
+- Out/err: `server/logs/fetch.out`, `server/logs/fetch.err`
+
+The script is incremental using `since_id` and appends oldest-first to preserve chronological order and avoid duplicates.

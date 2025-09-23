@@ -1,0 +1,44 @@
+name: Build & Publish Docs to External Repo
+
+on:
+  push:
+    paths:
+      - "docs/**"
+  workflow_dispatch:
+
+jobs:
+  publish-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install docs deps
+        working-directory: docs
+        run: npm ci
+
+      - name: Build Docusaurus
+        working-directory: docs
+        run: npm run build
+
+      - name: Add CNAME
+        run: echo "docs.eme.ethanpinedaa.dev" > docs/build/CNAME
+
+      - name: Deploy built site to external repo gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.DOCS_REPO_TOKEN }}
+          publish_dir: docs/build
+          external_repository: <your-user-or-org>/docs.eme.ethanpinedaa.dev
+          publish_branch: gh-pages
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
