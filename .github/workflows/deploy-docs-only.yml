@@ -36,7 +36,7 @@ jobs:
       - name: Deploy built site to external repo gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.DOCS_REPO_TOKEN }}
+          personal_token: ${{ secrets.DOCS_REPO_TOKEN }}
           publish_dir: docs/build
           external_repository: ethanpinedaa/docs.eme.ethanpinedaa.dev
           publish_branch: gh-pages
