@@ -208,3 +208,56 @@ Logs:
 - Out/err: `server/logs/fetch.out`, `server/logs/fetch.err`
 
 The script is incremental using `since_id` and appends oldest-first to preserve chronological order and avoid duplicates.
+
+## Deployment
+
+This project uses GitHub Actions for automated builds and deployments of both the frontend and the documentation site.
+
+### Frontend (React + Vite)
+
+- **CI workflow (`frontend-ci`)**
+  Runs on every pull request and push to `main` that touches `frontend/**` or workflow files.
+
+  - Lints and formats with ESLint and Prettier.
+  - Fails early if style or linting errors are detected.
+
+- **Deploy workflow (`Deploy Website`)**
+  Runs automatically when `frontend-ci` completes successfully on `main`.
+
+  - Builds the React frontend (`frontend/dist`).
+  - Publishes the build output to the repo’s `gh-pages` branch using `peaceiris/actions-gh-pages`.
+  - Hosted at:
+
+    ```
+    https://<your-username>.github.io/<this-repo>/
+    ```
+
+### Documentation (Docusaurus)
+
+- Source lives under `docs/` in this repo.
+- **Docs workflow (`Build & Publish Docs to External Repo`)** runs on:
+
+  - Any push that modifies `docs/**`.
+  - Manual trigger via "Run workflow".
+
+- Steps:
+
+  1. Installs dependencies and builds the static Docusaurus site.
+  2. Writes a `CNAME` file with the custom domain (`docs.eme.ethanpinedaa.dev`).
+  3. Publishes the built site to the `gh-pages` branch of the external repo [`ethanpinedaa/docs.eme.ethanpinedaa.dev`](https://github.com/ethanpinedaa/docs.eme.ethanpinedaa.dev).
+
+- Hosted at:
+
+  ```
+  https://docs.eme.ethanpinedaa.dev
+  ```
+
+### Secrets and Tokens
+
+- `VITE_API_URL` → backend API endpoint for the frontend build.
+- `DOCS_REPO_TOKEN` → fine-grained PAT with `Contents: Read & Write` permissions scoped to the external docs repo. Required for publishing the Docusaurus build to the external repository.
+
+### Summary of Flow
+
+- Frontend: Push to `main` → `frontend-ci` (lint/format) → `Deploy Website` (build and publish to `gh-pages`).
+- Docs: Push to `docs/**` or trigger manually → build with Docusaurus → publish to external `gh-pages` branch → custom domain.
