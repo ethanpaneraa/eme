@@ -4,3 +4,7 @@ index/
 *.log
 .DS_Store
 data/
+
+.venv
+
+__pycache__/
