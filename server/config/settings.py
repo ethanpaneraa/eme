@@ -20,6 +20,8 @@ class Settings(BaseSettings, extra="allow"):
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "")
 
+    EMERGING_CODERS_URL: str = os.getenv("EMERGING_CODERS_URL", "")
+
     ALLOWED_ORIGINS: List[str] = []
 
     def __init__(self, **kwargs):
@@ -37,6 +39,8 @@ class Settings(BaseSettings, extra="allow"):
             self.ALLOWED_ORIGINS = base_origins.copy()
             if self.FRONTEND_URL:
                 self.ALLOWED_ORIGINS.append(self.FRONTEND_URL)
+            if self.EMERGING_CODERS_URL:
+                self.ALLOWED_ORIGINS.append(self.EMERGING_CODERS_URL)
 
     class Config:
         env_file = ".env"
