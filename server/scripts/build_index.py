@@ -1,5 +1,5 @@
 import argparse, pathlib, glob
-from ingestion.loader import load_jsonl, make_chunks_from_records
+from server.ingestion.groupme_loader import load_jsonl, make_chunks_from_records
 from rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger
 

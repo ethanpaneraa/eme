@@ -12,7 +12,7 @@ from typing import List, Dict
 # Add the server directory to the path so we can import our modules
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-from ingestion.loader import load_jsonl, make_chunks_from_records
+from server.ingestion.groupme_loader import load_jsonl, make_chunks_from_records
 from rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger
 
