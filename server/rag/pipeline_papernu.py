@@ -8,6 +8,7 @@ from openai import OpenAI
 from datetime import datetime, timezone
 import time
 from typing import Any
+from ingestion.models import FullCourseRecord
 
 from ingestion.models import MessageChunk
 from utils.cleaning import sanitize_metadata
@@ -32,6 +33,12 @@ PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT") or "us-east-1"
 
 VECTOR_BACKEND = os.getenv("VECTOR_BACKEND")
 
+@dataclass
+class RetrievedHit:
+    text: str
+    meta: Dict[str, Any]
+    score: float
+
 class RAGPipelinePaperNU(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -49,7 +56,6 @@ class RAGPipelinePaperNU(BaseModel):
         out = []
         for i in range(0, len(texts), self.batch_size):
             chunk = texts[i:i+self.batch_size]
-
             try:
                 resp = self.llm.embeddings.create(model=EMBED_MODEL, input=chunk)
                 out.extend([e.embedding for e in resp.data])
@@ -57,34 +63,57 @@ class RAGPipelinePaperNU(BaseModel):
                 raise
         return out
 
-    # def _add_embedding_chunk(self, chunks: list[list[float]]):
-    #     if self.backend == "pinecone":
-    #         try:
-    #             if not PINECONE_API_KEY:
-    #                 raise ValueError("PINECONE_API_KEY environment variable is required for Pinecone backend")
-    #             from pinecone import Pinecone
-    #             import pinecone as _pinecone_mod
+    def add_all_records(self, records: list[FullCourseRecord]):
+        try:
+            ids = [r.subject + " " + r.catalog_number for r in records]
+            texts = [r.get_message() for r in records]
+            embeddings = self._batch_embed(texts)
 
-    #             self._pinecone_mod = _pinecone_mod
-    #             self.pc = Pinecone(api_key=PINECONE_API_KEY)
+            if self.backend == "pinecone":
+                if not PINECONE_API_KEY:
+                    raise ValueError("PINECONE_API_KEY environment variable is required for Pinecone backend")
+                try:
+                    indexes = self.pc.list_indexes()
+                    index_names = [idx.name for idx in indexes]
+                    if PINECONE_INDEX_NAME not in index_names:
+                        self.pc.create_index(
+                            name=PINECONE_INDEX_NAME,
+                            dimension=1536,
+                            metric="cosine",
+                            spec=self._pinecone_mod.ServerlessSpec(cloud="aws", region=PINECONE_ENVIRONMENT),
+                        )
+                    self.index = self.pc.Index(PINECONE_INDEX_NAME)
+                except Exception as e:
+                    raise
+            else:
+                # Insert into ChromaDB
+                self.collection.add(
+                    ids=ids,
+                    documents=texts,
+                    embeddings=embeddings,
+                )
+        except Exception as e:
+            raise
+    
+    def retrieve(self, query: str, k: int = 6) -> list[RetrievedHit]:
+        print(f"Retrieving {k} documents for query: {query[:50]}...")
 
-    #             try:
-    #                 indexes = self.pc.list_indexes()
-    #                 index_names = [idx.name for idx in indexes]
-    #                 if PINECONE_INDEX_NAME not in index_names:
-    #                     logger.info(f"Creating Pinecone index '{PINECONE_INDEX_NAME}' (dim=1536, metric=cosine)")
-    #                     self.pc.create_index(
-    #                         name=PINECONE_INDEX_NAME,
-    #                         dimension=1536,
-    #                         metric="cosine",
-    #                         spec=self._pinecone_mod.ServerlessSpec(cloud="aws", region=PINECONE_ENVIRONMENT),
-    #                     )
-    #                     logger.info(f"Created Pinecone index '{PINECONE_INDEX_NAME}'")
-    #                 self.index = self.pc.Index(PINECONE_INDEX_NAME)
-    #                 logger.info(f"Connected to Pinecone index '{PINECONE_INDEX_NAME}'")
-    #             except Exception as e:
-    #                 logger.error(f"Failed to get/create Pinecone index: {str(e)}")
-    #                 raise
-    #         except Exception as e:
-    #             logger.error(f"Failed to initialize Pinecone backend: {str(e)}")
-    #             raise
+        start_time = time.time()
+
+        try:
+            query_embedding = self._batch_embed([query])
+            hits = []
+
+            if self.backend == "pinecone":
+                result = self.index.query(vector=query_embedding, top_k=k, include_metadata=True)
+                for match in result.matches:
+                    meta = dict(match.metadata or {})
+                    text = meta.pop("text", "")
+                    hits.append(RetrievedHit(text=text, meta=meta, score=float(match.score)))
+            else:
+                res = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=k,
+                    include=["documents", "metadatas", "distances"],
+                )
+
