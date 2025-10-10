@@ -13,7 +13,7 @@ from typing import List, Dict
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from server.ingestion.groupme_loader import load_jsonl, make_chunks_from_records
-from rag.pipeline import RAGPipelineGM
+from server.rag.pipeline_groupme import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, Literal
-import re
+import re, math
 from pydantic import BaseModel, field_validator
 
 @dataclass
@@ -39,11 +39,22 @@ class FullCourseRecord(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def clean_text(cls, v):
-        if not v:
-            return ""
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return "."
+        if not isinstance(v, str):
+            v = str(v)
         
-        v = re.sub(r"[\u200B-\u200D\uFEFF]", "", v)  # zero-width
+        v = re.sub(r"[\u200B-\u200D\uFEFF]", "", v)
+        v = re.sub(r"[\x00-\x1F\x7F]", "", v)  # remove control chars
         v = re.sub(r"\s+", " ", v).strip()
+        if not v:
+            v = "."
+
+        # Optional: truncate very long fields to avoid token overflow
+        MAX_CHARS = 30000
+        if len(v) > MAX_CHARS:
+            v = v[:MAX_CHARS]
+
         return v
 
     @field_validator("catalog_number", mode="after")
