@@ -41,12 +41,7 @@ def _make_course_records_from_data(data: dict) -> list[FullCourseRecord]:
                 continue
     return course_records
 
-def make_messages_from_papernu() -> list[str]:
+def make_context_from_papernu_data() -> list[FullCourseRecord]:
     data = _load_data()
     all_records: list[FullCourseRecord] =  _make_course_records_from_data(data)
-
-    ret: list[str] = []
-    for record in all_records:
-        record.get_message()
-        ret.append(record.llm_message)
-    return ret
+    return all_records

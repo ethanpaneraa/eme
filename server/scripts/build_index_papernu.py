@@ -19,16 +19,8 @@ def main():
     
     print("Building paper index...")
     pipeline = RAGPipelinePaperNU()
-    # pipeline.add_all_records(contexts)
+    pipeline.add_all_records(contexts)
     print("Done building paper index.")
-
-    query = "What are the prerequisites for CS 336: Design & Analysis of Algorithms?"
-    context = pipeline.build_context(query)
-    print(f"Context for query '{query}':\n")
-    print(context)
-
-
-
 
 if __name__ == '__main__':
     main()

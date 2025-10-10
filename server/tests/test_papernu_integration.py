@@ -3,6 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ingestion.papernu_loader import make_messages_from_papernu
+from rag.pipeline_papernu import RAGPipelinePaperNU
 from pprint import pprint
 
 def test_make_messages_from_papernu():
@@ -14,4 +15,3 @@ def test_make_messages_from_papernu():
 
     for msg in llm_msgs[:5]:
         print(msg)
-    

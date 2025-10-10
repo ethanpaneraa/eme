@@ -5,15 +5,11 @@ from dotenv import load_dotenv
 import chromadb
 from chromadb.config import Settings
 from openai import OpenAI
-from datetime import datetime, timezone
 import time
 from typing import Any
 from ingestion.models import FullCourseRecord
 
-from ingestion.models import MessageChunk
-from utils.cleaning import sanitize_metadata
-from logging_config import get_logger, log_rag_operation
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict
 import pinecone as _pinecone_mod
 from pinecone import Pinecone
 
@@ -33,23 +29,16 @@ PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT") or "us-east-1"
 
 VECTOR_BACKEND = os.getenv("VECTOR_BACKEND")
 
-@dataclass
-class RetrievedHit:
-    text: str
-    meta: Dict[str, Any]
-    score: float
-
-class RAGPipelinePaperNU(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    backend: str = str(VECTOR_BACKEND) or "chroma"
-    _pinecone_mod = _pinecone_mod
-    pc: Pinecone = Pinecone(api_key=PINECONE_API_KEY)
-    index: Any = pc.Index(PINECONE_INDEX_NAME)
-    chroma_client: chromadb.Client = chromadb.PersistentClient(path="index/chroma")
-    collection: chromadb.Collection = chroma_client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}, )
-    llm: OpenAI = OpenAI(api_key=OPENAI_API_KEY)
-    batch_size: int = 64
+class RAGPipelinePaperNU():
+    def __init__(self):
+        self.backend = str(VECTOR_BACKEND) or "chroma"
+        self._pinecone_mod = _pinecone_mod
+        self.pc = Pinecone(api_key=PINECONE_API_KEY)
+        self.index = self.pc.Index(PINECONE_INDEX_NAME)
+        self.chroma_client = chromadb.PersistentClient(path="index/chroma")
+        self.collection: chromadb.Collection = self.chroma_client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}, )
+        self.llm: OpenAI = OpenAI(api_key=OPENAI_API_KEY)
+        self.batch_size: int = 64
 
     def _batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a batch of texts."""
@@ -95,25 +84,33 @@ class RAGPipelinePaperNU(BaseModel):
         except Exception as e:
             raise
     
-    def retrieve(self, query: str, k: int = 6) -> list[RetrievedHit]:
+    def retrieve(self, query: str, k: int = 6) -> list[str]:
         print(f"Retrieving {k} documents for query: {query[:50]}...")
 
-        start_time = time.time()
-
+        hits: list[str] = []
         try:
             query_embedding = self._batch_embed([query])
-            hits = []
 
             if self.backend == "pinecone":
                 result = self.index.query(vector=query_embedding, top_k=k, include_metadata=True)
                 for match in result.matches:
                     meta = dict(match.metadata or {})
                     text = meta.pop("text", "")
-                    hits.append(RetrievedHit(text=text, meta=meta, score=float(match.score)))
+                    hits.append(text)
             else:
                 res = self.collection.query(
-                    query_embeddings=[query_embedding],
+                    query_embeddings=[query_embedding][0],
                     n_results=k,
-                    include=["documents", "metadatas", "distances"],
                 )
+                docs = res.get("documents", [[]])[0]
+                hits = docs
+        except Exception as e:
+            raise
+        return hits
+        
+    def build_context(self, query: str) -> str:
+        header: str = "Below is official course information from paper.nu for relevant Computer Science and Computer Engineering coures:\n"
 
+        docs = self.retrieve(query)
+        full_context = header + "\n".join(docs)
+        return full_context
