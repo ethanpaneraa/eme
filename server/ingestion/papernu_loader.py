@@ -1,41 +1,52 @@
-from groupme_loader import _clean_text
-from ingestion.models import MessageChunk
-from ingestion.models import FullCourseRecord
-from types import Any
+from ingestion.models import FullCourseRecord, AllowedSubject
+import sys
+from pathlib import Path
 import json
 
-def _load_data() -> Any:
-    with open("../data/raw/plan.json", "r", encoding="utf-8") as f:
+def _load_data() -> dict:
+    data_path = Path(__file__).parent.parent / "data" / "raw" / "plan.json"
+    with open(data_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data
 
 def _split_subject_catalog_number(course_code: str) -> tuple[str, str]:
-    parts = course_code.split(',')
-    if len(parts) != 2:
-        raise ValueError(f"Invalid course code format: {course_code}")
-    
+    parts = course_code.split(' ')
     subject, catalog_number = parts
+    if len(parts) != 2:
+        return ("", "")
+        
     return subject, catalog_number
 
-def _make_course_records_from_data() -> list[FullCourseRecord]:
-    data = _load_data()
+def _make_course_records_from_data(data: dict) -> list[FullCourseRecord]:
     assert "courses" in data, "Data must contain 'courses' key"
 
-
-    course_records = []
+    course_records: list[FullCourseRecord] = []
     for item in data['courses']:
-        if 
-        record = FullCourseRecord(
-            subject=item.get("subject", "COMP_SCI"),
-            catalog_number=item.get("catalog_number", ""),
-            name=item.get("name", ""),
-            description=item.get("description", ""),
-            prereqs=item.get("prereqs", "")
-        )
-        course_records.append(record)
+        if "i" in item:
+            subject, catalog_number = _split_subject_catalog_number(item["i"])
+            name = item.get("n") or ""
+            description = item.get("d") or ""
+            prereqs = item.get("p") or ""
+
+            try:                
+                record = FullCourseRecord(
+                    subject=subject,
+                    catalog_number=catalog_number,
+                    name=name,
+                    description=description,
+                    prereqs=prereqs
+                )
+                course_records.append(record)
+            except ValueError as err:
+                continue
     return course_records
 
 def make_messages_from_papernu() -> list[str]:
-    all_records: list[FullCourseRecord] =  _make_course_records_from_data()
+    data = _load_data()
+    all_records: list[FullCourseRecord] =  _make_course_records_from_data(data)
 
-    return [record.get_message for record in all_records]
+    ret: list[str] = []
+    for record in all_records:
+        record.get_message()
+        ret.append(record.llm_message)
+    return ret

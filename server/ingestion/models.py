@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, Literal
 import re
+from pydantic import BaseModel, field_validator
 
 @dataclass
 class MessageChunk:
@@ -24,40 +25,43 @@ class MessageChunk:
     
 AllowedSubject = Literal["COMP_SCI", "COMP_ENG"]
     
-class FullCourseRecord:
+class FullCourseRecord(BaseModel):
     """
     Represents each unique course's information, including the historical times they were offered. 
     """
-    subject: AllowedSubject = "COMP_SCI"
+    subject: AllowedSubject
     catalog_number: str = "" # the '330-0' part in 'COMP_SCI 330-0'
     name: str = "" # Name, like 'Human Computer Interaction'
     description: str = "" # Description of the class from the latest offering of it
     prereqs: str = ""
     llm_message: str = "" 
 
+    @field_validator("*", mode="before")
+    @classmethod
+    def clean_text(cls, v):
+        if not v:
+            return ""
+        
+        v = re.sub(r"[\u200B-\u200D\uFEFF]", "", v)  # zero-width
+        v = re.sub(r"\s+", " ", v).strip()
+        return v
 
-    def __init__(self, subject="COMP_SCI", catalog_number="", name="", description="", prereqs=""):
-        self.subject = subject
-        self.catalog_number = catalog_number
-        self.name = name
-        self.description = description
-        self.prereqs = prereqs
-
-    def check_types(self):
-        try:
-            int(self.found_disc)
-        except (TypeError, ValueError):
-            raise AssertionError("found_disc must be an int or a string representing an int")
-
-        assert self.subject in ("COMP_SCI", "COMP_ENG"), "subject must be COMP_SCI or COMP_ENG"
-        assert isinstance(self.catalog_number, str), "catalog_number must be a string"
-        assert re.match(r'^[\d\-]+$', self.catalog_number), "catalog_number must only contain numbers and dashes"
-        assert isinstance(self.name, str), "name must be a string"
-        assert isinstance(self.description, str), "description must be a string"
-        assert isinstance(self.prereqs, str), "prereqs must be a string"
+    @field_validator("catalog_number", mode="after")
+    @classmethod
+    def catalog_number_checker(cls, v):
+        if not re.match(r'^[\d\-]+$', v):
+            raise ValueError("Catalog number must be only number and dashes")
+        if v == "":
+            raise ValueError("Catalog number cannot be empy")
+        return v
+    
+    @field_validator("name", mode="after")
+    @classmethod
+    def name_checker(cls, v):
+        if v == "":
+            raise ValueError("Name of course cannot be empty")
+        return v
 
     def get_message(self) -> str:
-        self.check_types()
-
-        self.llm_message: str = f"Course information for {'COMP_SCI/CS' if self.subject == 'COMP_SCI' else 'COMP_ENG/CE'}{self.catalog_number} {self.name}:\nDescription: {self.description}\nPrerequisites: {self.prereqs}\n"
+        self.llm_message = f"Course information for {'COMP_SCI/CS' if self.subject == 'COMP_SCI' else 'COMP_ENG/CE'} {self.catalog_number}: {self.name}\nDescription: {self.description}\nPrerequisites: {self.prereqs}\n"
         return self.llm_message
