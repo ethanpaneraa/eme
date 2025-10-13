@@ -2,16 +2,30 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ingestion.papernu_loader import make_messages_from_papernu
+from ingestion.papernu_loader import make_context_from_papernu_data
+from ingestion.models import FullCourseRecord
 from rag.pipeline_papernu import RAGPipelinePaperNU
 from pprint import pprint
 
-def test_make_messages_from_papernu():
-    llm_msgs: list[str] = make_messages_from_papernu()
+def test_make_context_from_papernu_data():
+    records: list[FullCourseRecord] = make_context_from_papernu_data()
 
-    assert isinstance(llm_msgs, list)
-    assert len(llm_msgs) > 100
-    assert all(len(msg) > 10 for msg in llm_msgs)
+    assert isinstance(records, list)
+    assert len(records) > 100
 
-    for msg in llm_msgs[:5]:
+    for msg in records[:5]:
         print(msg)
+
+def test_rag_pipeline_papernu():
+    # Note: This test requires OpenAI API key and will make real API calls
+    # Skip if OPENAI_API_KEY is not set
+    import os
+    if not os.getenv("OPENAI_API_KEY"):
+        import pytest
+        pytest.skip("OPENAI_API_KEY not set")
+    
+    pipeline = RAGPipelinePaperNU()
+    query = "What are the prerequisites for CS 336: Design & Analysis of Algorithms?"
+    context = pipeline.build_context(query)
+    print(f"Context for query '{query}':\n")
+    print(context)

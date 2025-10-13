@@ -9,7 +9,6 @@ import time
 from typing import Any
 from ingestion.models import FullCourseRecord
 
-from pydantic import BaseModel, ConfigDict
 import pinecone as _pinecone_mod
 from pinecone import Pinecone
 
@@ -39,6 +38,7 @@ class RAGPipelinePaperNU():
         self.collection: chromadb.Collection = self.chroma_client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}, )
         self.llm: OpenAI = OpenAI(api_key=OPENAI_API_KEY)
         self.batch_size: int = 64
+        self.records: list[FullCourseRecord] = []
 
     def _batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a batch of texts."""
@@ -53,6 +53,7 @@ class RAGPipelinePaperNU():
         return out
 
     def add_all_records(self, records: list[FullCourseRecord]):
+        self.records = records
         try:
             ids = [r.subject + " " + r.catalog_number for r in records]
             texts = [r.get_message() for r in records]
@@ -107,6 +108,20 @@ class RAGPipelinePaperNU():
         except Exception as e:
             raise
         return hits
+    
+    def _match_catalog_number_to_name(self, catalog_number: str):
+        """Given a catalog number, match it to the course name.
+        For example, given "336", we match and return with "Design & Analysis of Algorithms". Returns all names that match. 
+        
+        This is to improve RAG matching for the actual courses since a query with the number by itself (such as "what are the prereqs for CS330?") doesn't perform well RAG-wise matching with the actula course.
+
+        However, providing RAG with the context of CS330 Human Computer Interaction greatly improves matching, hence this function's usefulness.
+        """
+
+        def isSimilar()
+
+        for record in self.records:
+            if catalog_number == record.catalog_number
         
     def build_context(self, query: str) -> str:
         header: str = "Below is official course information from paper.nu for relevant Computer Science and Computer Engineering coures:\n"
@@ -114,3 +129,4 @@ class RAGPipelinePaperNU():
         docs = self.retrieve(query)
         full_context = header + "\n".join(docs)
         return full_context
+    
