@@ -3,7 +3,7 @@ logs/
 index/
 *.log
 .DS_Store
-data/
+# data/
 
 .venv
 
