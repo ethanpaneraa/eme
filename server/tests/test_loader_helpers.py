@@ -329,3 +329,25 @@ def test_make_course_records_from_data():
 
 def test_basic() -> None:
     assert 4 == 4
+
+def test_find_catalog_number_matches_course():
+    from rag.pipeline_papernu import RAGPipelinePaperNU
+    from ingestion.models import FullCourseRecord
+
+    # Create a FullCourseRecord for CS336 without calling RAGPipelinePaperNU.__init__
+    record = FullCourseRecord(
+        subject="COMP_SCI",
+        catalog_number="336-0",
+        name="Design & Analysis of Algorithms",
+        description="",
+        prereqs=""
+    )
+
+    # Bypass __init__ to avoid external client initialization
+    pipeline = object.__new__(RAGPipelinePaperNU)
+    pipeline.records = [record]
+
+    query = "Hey, can you tell me about CS336 and its prereqs?"
+    matches = pipeline._match_catalog_number_to_course(query)
+
+    assert any("Design & Analysis of Algorithms" in m for m in matches), f"expected course name in matches, got: {matches}"

@@ -8,6 +8,7 @@ from openai import OpenAI
 import time
 from typing import Any
 from ingestion.models import FullCourseRecord
+from ingestion.papernu_loader import make_context_from_papernu_data
 
 import pinecone as _pinecone_mod
 from pinecone import Pinecone
@@ -38,7 +39,7 @@ class RAGPipelinePaperNU():
         self.collection: chromadb.Collection = self.chroma_client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}, )
         self.llm: OpenAI = OpenAI(api_key=OPENAI_API_KEY)
         self.batch_size: int = 64
-        self.records: list[FullCourseRecord] = []
+        self.records: list[FullCourseRecord] = make_context_from_papernu_data()
 
     def _batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for a batch of texts."""
@@ -48,7 +49,7 @@ class RAGPipelinePaperNU():
             try:
                 resp = self.llm.embeddings.create(model=EMBED_MODEL, input=chunk)
                 out.extend([e.embedding for e in resp.data])
-            except Exception as e:              
+            except Exception as e:
                 raise
         return out
 
@@ -108,25 +109,44 @@ class RAGPipelinePaperNU():
         except Exception as e:
             raise
         return hits
-    
-    def _match_catalog_number_to_name(self, catalog_number: str):
+
+    def _match_catalog_number_to_course(self, query: str) -> list[str]:
         """Given a catalog number, match it to the course name.
         For example, given "336", we match and return with "Design & Analysis of Algorithms". Returns all names that match. 
         
         This is to improve RAG matching for the actual courses since a query with the number by itself (such as "what are the prereqs for CS330?") doesn't perform well RAG-wise matching with the actula course.
 
         However, providing RAG with the context of CS330 Human Computer Interaction greatly improves matching, hence this function's usefulness.
-        """
+        """            
+        def _find_catalog_number(query: str) -> list[str]:
+            COURSE_NUMBER_LEN = 3
+            nums_dash = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-']
+            ret = []
 
-        def isSimilar()
+            for i in range(len(query) - COURSE_NUMBER_LEN): 
+                segment: str = query[i:i + COURSE_NUMBER_LEN]
+                if all(c in nums_dash for c in segment):
+                    ret.append(segment)
+            return ret
+        
+        potential_catalog_numbers: list[str] = _find_catalog_number(query)
+        names: list[str] = []
 
-        for record in self.records:
-            if catalog_number == record.catalog_number
+        for catalog_number in potential_catalog_numbers:
+            for record in self.records:
+                if catalog_number in record.catalog_number:
+                    names.append(f"{catalog_number}: {record.name}. {record.description}")
+        return names
         
     def build_context(self, query: str) -> str:
-        header: str = "Below is official course information from paper.nu for relevant Computer Science and Computer Engineering coures:\n"
+        # if the user input has "CS348" in it, append "348: Human Computer Interaction" to the query to improve embedding accuracy
+        matched_courses: str = ",".join(self._match_catalog_number_to_course(query))
+        query = query + "\n" + matched_courses
 
+        # retrieve similar vector-embedding queries
         docs = self.retrieve(query)
+
+        header: str = "Below is official course information from paper.nu for relevant Computer Science and Computer Engineering coures:\n"
         full_context = header + "\n".join(docs)
         return full_context
     
