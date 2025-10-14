@@ -114,7 +114,7 @@ class RAGPipelinePaperNU():
         """Given a catalog number, match it to the course name.
         For example, given "336", we match and return with "Design & Analysis of Algorithms". Returns all names that match. 
         
-        This is to improve RAG matching for the actual courses since a query with the number by itself (such as "what are the prereqs for CS330?") doesn't perform well RAG-wise matching with the actula course.
+        This is to improve RAG matching for the actual courses since a query with the number by itself (such as "what are the prereqs for CS330?") doesn't perform well RAG-wise matching with the actual course.
 
         However, providing RAG with the context of CS330 Human Computer Interaction greatly improves matching, hence this function's usefulness.
         """            
@@ -149,4 +149,3 @@ class RAGPipelinePaperNU():
         header: str = "Below is official course information from paper.nu for relevant Computer Science and Computer Engineering coures:\n"
         full_context = header + "\n".join(docs)
         return full_context
-    
