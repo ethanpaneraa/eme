@@ -331,7 +331,7 @@ def test_basic() -> None:
     assert 4 == 4
 
 def test_find_catalog_number_matches_course():
-    from rag.pipeline_papernu import RAGPipelinePaperNU
+    from rag.pipeline_groupme import RAGPipelineGM
     from ingestion.models import FullCourseRecord
 
     # Create a FullCourseRecord for CS336 without calling RAGPipelinePaperNU.__init__
@@ -344,8 +344,8 @@ def test_find_catalog_number_matches_course():
     )
 
     # Bypass __init__ to avoid external client initialization
-    pipeline = object.__new__(RAGPipelinePaperNU)
-    pipeline.records = [record]
+    pipeline = object.__new__(RAGPipelineGM)
+    pipeline.course_records = [record]
 
     query = "Hey, can you tell me about CS336 and its prereqs?"
     matches = pipeline._match_catalog_number_to_course(query)

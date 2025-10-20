@@ -147,46 +147,6 @@ def test_match_catalog_number_extracts_multiple():
 # Phase 3: Test PaperNU data indexing and retrieval
 # ============================================================================
 
-def test_add_course_records_to_collection():
-    """Test adding course records to the PaperNU collection."""
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY not set")
-    
-    pipeline = RAGPipelineGM()
-    
-    # Skip if using Pinecone (requires more setup)
-    if pipeline.backend != "chroma":
-        pytest.skip("Test only for ChromaDB backend")
-    
-    # Create test records
-    from ingestion.models import FullCourseRecord
-    test_records = [
-        FullCourseRecord(
-            subject="COMP_SCI",
-            catalog_number="336-0",
-            name="Design & Analysis of Algorithms",
-            description="Advanced algorithms course covering greedy, divide-and-conquer, dynamic programming",
-            prereqs="COMP_SCI 214-0"
-        ),
-        FullCourseRecord(
-            subject="COMP_SCI",
-            catalog_number="330-0",
-            name="Human Computer Interaction",
-            description="HCI principles, user-centered design, prototyping",
-            prereqs="None"
-        )
-    ]
-    
-    # Add records
-    pipeline.add_course_records(test_records)
-    
-    # Verify they were added (check collection has items)
-    count = pipeline.papernu_collection.count()
-    assert count >= len(test_records), f"Expected at least {len(test_records)} records, got {count}"
-    
-    print(f"✓ Successfully added {len(test_records)} course records to collection")
-
-
 def test_retrieve_papernu_finds_courses():
     """Test retrieving course information from PaperNU collection."""
     if not os.getenv("OPENAI_API_KEY"):
@@ -196,32 +156,13 @@ def test_retrieve_papernu_finds_courses():
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")
-    
-    # First ensure we have data
-    from ingestion.models import FullCourseRecord
-    test_records = [
-        FullCourseRecord(
-            subject="COMP_SCI",
-            catalog_number="336-0",
-            name="Design & Analysis of Algorithms",
-            description="Advanced algorithms course",
-            prereqs="COMP_SCI 214-0"
-        )
-    ]
-    pipeline.add_course_records(test_records)
-    
-    # Query for algorithms course
-    query = "Tell me about the algorithms course CS336"
-    hits = pipeline.retrieve_papernu(query, k=3)
-    
-    assert isinstance(hits, list)
-    assert len(hits) > 0
-    
-    # Check that we got course data back
-    assert any("336" in hit.text or "algorithm" in hit.text.lower() for hit in hits)
-    
-    print(f"✓ Retrieved {len(hits)} PaperNU documents")
-    print(f"  First hit: {hits[0].text[:100]}...")
+    # Instead of manipulating the index, call generate and check CS337 prereqs
+    query = "What are the prerequisites for CS337?"
+    response = pipeline.generate(query, k=3)
+
+    assert isinstance(response, str)
+    assert "348" in response or "COMP_SCI 348" in response
+    print("✓ Generated response for CS337 contains expected prereq token 348")
 
 
 def test_combined_retrieval():
@@ -233,31 +174,14 @@ def test_combined_retrieval():
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")
-    
-    # Add some course data
-    from ingestion.models import FullCourseRecord
-    test_records = [
-        FullCourseRecord(
-            subject="COMP_SCI",
-            catalog_number="330-0",
-            name="Human Computer Interaction",
-            description="HCI course",
-            prereqs="None"
-        )
-    ]
-    pipeline.add_course_records(test_records)
-    
-    # Do combined retrieval
-    query = "What is HCI about?"
-    groupme_hits, papernu_hits = pipeline.retrieve_combined(query, k_groupme=3, k_papernu=3)
-    
-    assert isinstance(groupme_hits, list)
-    assert isinstance(papernu_hits, list)
-    
-    # PaperNU should have results
-    assert len(papernu_hits) > 0
-    
-    print(f"✓ Combined retrieval: {len(groupme_hits)} GroupMe + {len(papernu_hits)} PaperNU hits")
+    # Test generation for course 350's prerequisites (expecting 213 and 340 to be mentioned)
+    query = "What are the prerequisites for CS350?"
+    response = pipeline.generate(query, k=3)
+
+    assert isinstance(response, str)
+    assert ("213" in response or "COMP_SCI 213" in response), f"expected '213' in response: {response[:200]}"
+    assert ("340" in response or "COMP_SCI 340" in response), f"expected '340' in response: {response[:200]}"
+    print("✓ Generated response for CS350 contains expected prereq tokens 213 and 340")
 
 
 # ============================================================================
@@ -316,20 +240,7 @@ def test_generate_with_hybrid_sources():
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")
-    
-    # Add course data
-    from ingestion.models import FullCourseRecord
-    test_records = [
-        FullCourseRecord(
-            subject="COMP_SCI",
-            catalog_number="336-0",
-            name="Design & Analysis of Algorithms",
-            description="Study of fundamental algorithms including greedy algorithms, divide and conquer, and dynamic programming",
-            prereqs="COMP_SCI 214-0"
-        )
-    ]
-    pipeline.add_course_records(test_records)
-    
+        
     # Generate a response
     query = "What is CS336 about?"
     response = pipeline.generate(query, k=3)

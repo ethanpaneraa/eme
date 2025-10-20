@@ -5,11 +5,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ingestion.papernu_loader import make_context_from_papernu_data
 from ingestion.models import FullCourseRecord
-from rag.pipeline_papernu import RAGPipelinePaperNU
+from rag.pipeline_groupme import RAGPipelineGM
 from pprint import pprint
 
 def test_make_context_from_papernu_data():
     records: list[FullCourseRecord] = make_context_from_papernu_data()
+
+    print("Preview of loaded PaperNU course records:")
+    for record in records[:2]:
+        pprint(record)
 
     assert isinstance(records, list)
     assert len(records) > 100
@@ -21,8 +25,10 @@ def test_rag_pipeline_papernu():
         import pytest
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelinePaperNU()
-    query = "Hey, can you tell me about CS336 and its prereqs?"
-    context = pipeline.build_context(query)
-    print(f"Context for query {query}:")
-    print(context)
+    pipeline = RAGPipelineGM()
+    query = "What are the prereqs for CS337?"
+    response = pipeline.generate(query)
+
+    assert all(text in response for text in ["348"]), f"Expected prereq course numbers 348 not found in context: {response}"
+
+    print(f"Generated context for query '{query}':\n{response}")
