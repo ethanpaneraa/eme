@@ -1,7 +1,7 @@
 import argparse, pathlib, glob
 from ingestion.groupme_loader import load_jsonl, make_chunks_from_records
 from ingestion.papernu_loader import make_context_from_papernu_data
-from rag.pipeline_groupme import RAGPipelineGM
+from server.rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging

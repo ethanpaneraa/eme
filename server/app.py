@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from rag.pipeline_groupme import RAGPipelineGM
+from server.rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger, log_request_info, log_bot_interaction
 from config.settings import settings
 

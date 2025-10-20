@@ -1,4 +1,4 @@
-from server.rag.pipeline_groupme import RAGPipelineGM
+from server.rag.pipeline import RAGPipelineGM
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging

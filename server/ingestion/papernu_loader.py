@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 
 def _load_data() -> dict:
-    data_path = Path(__file__).parent.parent / "data" / "raw" / "plan.json"
+    data_path = Path(__file__).parent.parent / "data" / "raw" / "papernu.json"
     with open(data_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data

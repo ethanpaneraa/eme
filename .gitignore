@@ -8,3 +8,6 @@ index/
 .venv
 
 __pycache__/
+
+server/data/raw/
+/data/

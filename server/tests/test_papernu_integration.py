@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ingestion.papernu_loader import make_context_from_papernu_data
 from ingestion.models import FullCourseRecord
-from rag.pipeline_groupme import RAGPipelineGM
+from server.rag.pipeline import RAGPipelineGM
 from pprint import pprint
 
 def test_make_context_from_papernu_data():

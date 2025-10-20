@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from rag.pipeline_groupme import RAGPipelineGM
+from server.rag.pipeline import RAGPipelineGM
 from ingestion.models import FullCourseRecord
 
 
@@ -195,7 +195,7 @@ def test_build_hybrid_prompt():
     
     pipeline = RAGPipelineGM()
     
-    from rag.pipeline_groupme import RetrievedHit
+    from server.rag.pipeline import RetrievedHit
     
     # Create mock hits
     groupme_hits = [
