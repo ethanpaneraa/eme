@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ingestion.papernu_loader import make_context_from_papernu_data
 from ingestion.models import FullCourseRecord
-from server.rag.pipeline import RAGPipelineGM
+from server.rag.pipeline import RAGPipeline
 from pprint import pprint
 
 def test_make_context_from_papernu_data():
@@ -25,7 +25,7 @@ def test_rag_pipeline_papernu():
         import pytest
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     query = "What are the prereqs for CS337?"
     response = pipeline.generate(query)
 

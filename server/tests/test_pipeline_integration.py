@@ -1,5 +1,5 @@
 """
-Tests for the integrated RAGPipelineGM with PaperNU course data.
+Tests for the integrated RAGPipeline with PaperNU course data.
 """
 import sys
 from pathlib import Path
@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from server.rag.pipeline import RAGPipelineGM
+from server.rag.pipeline import RAGPipeline
 from ingestion.models import FullCourseRecord
 
 
@@ -23,7 +23,7 @@ def test_pipeline_initialization_loads_course_records():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     # Verify course records were loaded
     assert hasattr(pipeline, 'course_records')
@@ -48,7 +48,7 @@ def test_pipeline_has_papernu_collection():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     # Only check for ChromaDB backend
     if pipeline.backend == "chroma":
@@ -74,7 +74,7 @@ def test_match_catalog_number_finds_courses():
         pytest.skip("OPENAI_API_KEY not set")
     
     # Create a minimal pipeline with mock course records
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     # Add test course records if empty
     if not pipeline.course_records:
@@ -113,7 +113,7 @@ def test_match_catalog_number_handles_no_matches():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     # Query with non-existent course number
     query = "Tell me about CS999"
@@ -129,7 +129,7 @@ def test_match_catalog_number_extracts_multiple():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     if not pipeline.course_records:
         pytest.skip("No course records loaded")
@@ -152,7 +152,7 @@ def test_retrieve_papernu_finds_courses():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")
@@ -170,7 +170,7 @@ def test_combined_retrieval():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")
@@ -193,7 +193,7 @@ def test_build_hybrid_prompt():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     from server.rag.pipeline import RetrievedHit
     
@@ -236,7 +236,7 @@ def test_generate_with_hybrid_sources():
     if not os.getenv("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
     
-    pipeline = RAGPipelineGM()
+    pipeline = RAGPipeline()
     
     if pipeline.backend != "chroma":
         pytest.skip("Test only for ChromaDB backend")

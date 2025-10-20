@@ -38,7 +38,7 @@ class RetrievedHit:
     meta: Dict[str, Any]
     score: float
 
-class RAGPipelineGM:
+class RAGPipeline:
     def __init__(self, batch_size: int = 64):
         logger.info(f"Initializing RAG pipeline with batch_size={batch_size}")
         # figure out which kind of vector database to use

@@ -1,7 +1,7 @@
 import argparse, pathlib, glob
 from ingestion.groupme_loader import load_jsonl, make_chunks_from_records
 from ingestion.papernu_loader import make_context_from_papernu_data
-from server.rag.pipeline import RAGPipelineGM
+from server.rag.pipeline import RAGPipeline
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging
@@ -19,7 +19,7 @@ def main():
     
     # Initialize RAG pipeline
     logger.info("Initializing RAG pipeline...")
-    rag = RAGPipelineGM()
+    rag = RAGPipeline()
 
     logger.info("--- Phase 1: Processing GroupMe messages ---")
     files = sorted(glob.glob(args.input_glob))
