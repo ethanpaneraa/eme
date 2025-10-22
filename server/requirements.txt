@@ -6,3 +6,4 @@ chromadb
 pinecone
 python-dotenv
 pydantic-settings
+pytest

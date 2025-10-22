@@ -1,4 +1,4 @@
-from rag.pipeline import RAGPipelineGM
+from server.rag.pipeline import RAGPipeline
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging
@@ -10,7 +10,7 @@ def main():
     logger.info("Starting interactive chat session")
 
     try:
-        rag = RAGPipelineGM()
+        rag = RAGPipeline()
         logger.info("RAG pipeline initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize RAG pipeline: {str(e)}")

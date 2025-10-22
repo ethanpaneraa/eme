@@ -3,4 +3,11 @@ logs/
 index/
 *.log
 .DS_Store
-data/
+# data/
+
+.venv
+
+__pycache__/
+
+server/data/raw/
+/data/

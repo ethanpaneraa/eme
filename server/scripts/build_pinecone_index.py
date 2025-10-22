@@ -2,8 +2,8 @@ import argparse, pathlib, glob, sys
 
 # Ensure project root (server/) is on sys.path when running from scripts/
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-from ingestion.loader import load_jsonl, make_chunks_from_records
-from rag.pipeline import RAGPipelineGM
+from server.ingestion.groupme_loader import load_jsonl, make_chunks_from_records
+from server.rag.pipeline import RAGPipeline
 from logging_config import setup_logging_from_env, get_logger
 
 # Initialize logging
@@ -50,7 +50,7 @@ def main():
 
     logger.info("Initializing RAG pipeline (Pinecone backend if configured)...")
     try:
-        rag = RAGPipelineGM()
+        rag = RAGPipeline()
 
         # Clear existing index if requested
         if args.clear:

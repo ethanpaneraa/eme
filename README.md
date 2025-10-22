@@ -1,6 +1,6 @@
 ### eme
 
-RAG-powered assistant for the Emerging Coders GroupMe. The backend ingests GroupMe messages into a vector store (ChromaDB by default, optional Pinecone) and serves answers via FastAPI. A React + Vite frontend provides a simple chat UI that streams responses.
+RAG-powered assistant for the Emerging Coders GroupMe. The backend ingests GroupMe messages and PaperNU data into a vector store (ChromaDB by default, optional Pinecone) and serves answers via FastAPI. A React + Vite frontend provides a simple chat UI that streams responses.
 
 ## Monorepo Layout
 
@@ -107,7 +107,7 @@ The output file contains one JSON object per line.
 
 ## Building the Vector Index
 
-Once you have one or more `.jsonl` dumps under `server/data/raw/`, build the index:
+Once you have papernu data in the correct format (see [documentation](https://support.dilanxd.com/paper/faq/])) under `server/data/raw/papernu.json` and one or more `.jsonl` dumps under `server/data/raw/`, build the index:
 
 ```bash
 cd server
@@ -139,10 +139,10 @@ By default the frontend runs at `http://localhost:5173`. The backend CORS policy
 
 ## How It Works (High-Level)
 
-1. Ingestion: `fetch_groupme_messages.sh` exports raw messages to JSONL.
-2. Processing: `server/ingestion/loader.py` normalizes, threads, and creates chunks (Q&A, announcements, and context windows).
+1. Ingestion: `fetch_groupme_messages.sh` exports raw messages to JSONL. 
+2. Processing: `server/ingestion/groupme_loader.py` and `server/ingestion/papernu_loader.py` normalizes, threads, and creates chunks (Q&A, announcements, and context windows) and builds `FullCourseRecord` objects, which represent PaperNU course data.
 3. Indexing: `server/rag/pipeline.py` batches embeddings via OpenAI and stores vectors in ChromaDB or Pinecone.
-4. Retrieval + Generation: `/chat` retrieves top-k chunks and generates an answer via OpenAI chat completions.
+4. Retrieval + Generation: `/chat` retrieves top-k chunks and generates an answer via OpenAI chat completions. Note that the `k` is used as the value for both GroupMe and PaperNU course matches (ie k=3 means the context built could include 3 GroupMe messages and 3 papernu course data) 
 
 ## Configuration Reference
 
@@ -159,6 +159,9 @@ Backend environment variables (see `server/config/settings.py` and `server/rag/p
 Frontend environment variables:
 
 - `VITE_API_URL`: base URL of the backend (e.g., `http://localhost:8000`)
+
+## Unit tests
+- There are several unit tests under `server/tests` which confirm eme is working properly. Run them using `pytest` to ensure both GroupME and Papernu data is loaded and the chatbot is working correctly. 
 
 ## Troubleshooting
 

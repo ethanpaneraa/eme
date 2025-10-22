@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from rag.pipeline import RAGPipelineGM
+from server.rag.pipeline import RAGPipeline
 from logging_config import setup_logging_from_env, get_logger, log_request_info, log_bot_interaction
 from config.settings import settings
 
@@ -21,7 +21,7 @@ POST_URL = f"{settings.GROUPME_API_URL}/bots/post"
 MENTION_RE = re.compile(r"(^|\s)@eme([^\w]|$)", re.IGNORECASE)
 
 log.info("Initializing RAG pipeline...")
-rag = RAGPipelineGM()
+rag = RAGPipeline()
 log.info("RAG pipeline initialized successfully")
 
 app = FastAPI(title="GroupMe Vector Bot", version="1.0.0")
