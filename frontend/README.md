@@ -35,6 +35,6 @@ npm run dev
 The frontend communicates with the backend via:
 
 - `POST /chat` - Send messages and receive streaming responses
-- `GET /health` - Health check endpoint
+- `GET /health` - health check endpoint
 
 Make sure your backend server is running on the configured URL before starting the frontend.
